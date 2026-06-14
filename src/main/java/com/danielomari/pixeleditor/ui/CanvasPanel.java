@@ -288,17 +288,10 @@ public class CanvasPanel extends JPanel {
             // Draw the canvas image with scaling and centering offsets
             g2d.drawImage(canvasImage, (int) (offsetX / currentZoomFactor), (int) (offsetY / currentZoomFactor), this);
 
-            // Draw selection box if selectionBounds is set
+            // Draw the selection overlay (box + handles). drawSelection applies
+            // the centering offset itself, so it lines up with the document.
             if (selectionBounds != null && selectionBounds.width > 0 && selectionBounds.height > 0) {
                 SelectTool.getInstance().drawSelection(g2d);
-
-                // Adjust selection bounds for zoom and centering
-                int selectionX = selectionBounds.x + (int) (offsetX / currentZoomFactor);
-                int selectionY = selectionBounds.y + (int) (offsetY / currentZoomFactor);
-                int selectionW = selectionBounds.width;
-                int selectionH = selectionBounds.height;
-
-                g2d.drawRect(selectionX, selectionY, selectionW, selectionH);
             }
         }
 

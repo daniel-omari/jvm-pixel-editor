@@ -145,7 +145,6 @@ public class SelectTool implements Tool {
     @Override
     public void onDrag(MouseEvent e) {
         if (isSelecting) {
-            System.out.println("Is Selecting is true");
             endPoint = e.getPoint();
             updateSelectionBounds();
             canvas.repaint();
@@ -257,16 +256,15 @@ public class SelectTool implements Tool {
             // Set crosshair cursor by default when select tool is activated
             canvas.setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
 
-            canvas.addPaintListener(this::drawSelection);
+            // Hover-cursor updates only. Press/drag/release arrive through
+            // CanvasPanel's central dispatch (already in image coordinates), so we
+            // must NOT also handle dragging here (that drove the selection from two
+            // coordinate systems at once). The selection overlay is drawn by
+            // paintComponent, not a stacked paint listener.
             canvas.addMouseMotionListener(new MouseMotionAdapter() {
                 @Override
                 public void mouseMoved(MouseEvent e) {
-                    updateCursor(e.getPoint());
-                }
-
-                @Override
-                public void mouseDragged(MouseEvent e) {
-                    onDrag(e);
+                    updateCursor(canvas.screenToImage(e.getX(), e.getY()));
                 }
             });
         }
@@ -624,6 +622,13 @@ public class SelectTool implements Tool {
     }
 
     public void drawSelection(Graphics2D g) {
+        // Apply the document's centering offset so the overlay lines up with the
+        // canvas (the shared Graphics is zoomed but not offset). Restore the
+        // transform afterwards so other rendering is unaffected.
+        java.awt.geom.AffineTransform savedTransform = g.getTransform();
+        double zoom = canvas.getZoom();
+        g.translate(canvas.getRenderOffsetX() / zoom, canvas.getRenderOffsetY() / zoom);
+        try {
         if (isSelecting) {
             // Draw selection rectangle
             g.setColor(Color.BLACK);
@@ -673,6 +678,9 @@ public class SelectTool implements Tool {
             g.drawRect(selectionBounds.x + selectionBounds.width - handleSize / 2, selectionBounds.y + selectionBounds.height / 2 - handleSize / 2, handleSize, handleSize);
             g.drawRect(selectionBounds.x + selectionBounds.width / 2 - handleSize / 2, selectionBounds.y + selectionBounds.height - handleSize / 2, handleSize, handleSize);
             g.drawRect(selectionBounds.x - handleSize / 2, selectionBounds.y + selectionBounds.height / 2 - handleSize / 2, handleSize, handleSize);
+        }
+        } finally {
+            g.setTransform(savedTransform);
         }
     }
 
