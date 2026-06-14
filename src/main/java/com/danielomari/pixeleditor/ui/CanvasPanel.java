@@ -94,6 +94,38 @@ public class CanvasPanel extends JPanel {
             repaint();
         }
     }
+
+    // --- Single source of truth for the screen <-> image coordinate mapping. ---
+    // The canvas image is drawn scaled by the zoom factor and centred in the
+    // panel. These helpers convert between on-screen (panel) pixels and image
+    // pixels so the maths is never duplicated across tools and the renderer.
+    // When the canvas is later decoupled from the window size, only these
+    // methods change and everything that routes through them follows.
+
+    // Top-left position of the (scaled) image within the panel.
+    public int getRenderOffsetX() {
+        return (getWidth() - (int) (canvasImage.getWidth() * currentZoomFactor)) / 2;
+    }
+
+    public int getRenderOffsetY() {
+        return (getHeight() - (int) (canvasImage.getHeight() * currentZoomFactor)) / 2;
+    }
+
+    // Panel (screen) pixel -> image pixel, clamped to the image bounds.
+    public Point screenToImage(int screenX, int screenY) {
+        int imageX = (int) ((screenX - getRenderOffsetX()) / currentZoomFactor);
+        int imageY = (int) ((screenY - getRenderOffsetY()) / currentZoomFactor);
+        imageX = Math.max(0, Math.min(imageX, canvasImage.getWidth() - 1));
+        imageY = Math.max(0, Math.min(imageY, canvasImage.getHeight() - 1));
+        return new Point(imageX, imageY);
+    }
+
+    // Image pixel -> panel (screen) pixel.
+    public Point imageToScreen(int imageX, int imageY) {
+        int screenX = (int) (imageX * currentZoomFactor) + getRenderOffsetX();
+        int screenY = (int) (imageY * currentZoomFactor) + getRenderOffsetY();
+        return new Point(screenX, screenY);
+    }
     // Set the current tool and deactivate ShapeTool if it is the current tool
     public void setTool(Tool tool) {
         System.out.println("Incoming tool: " + tool);
@@ -239,11 +271,8 @@ public class CanvasPanel extends JPanel {
 
         // Ensure canvasImage is not null before getting dimensions
         if (canvasImage != null) {
-            int scaledWidth = (int) (canvasImage.getWidth() * currentZoomFactor);
-            int scaledHeight = (int) (canvasImage.getHeight() * currentZoomFactor);
-
-            int offsetX = (getWidth() - scaledWidth) / 2;
-            int offsetY = (getHeight() - scaledHeight) / 2;
+            int offsetX = getRenderOffsetX();
+            int offsetY = getRenderOffsetY();
 
             // Apply zoom transformation
             g2d.scale(currentZoomFactor, currentZoomFactor);

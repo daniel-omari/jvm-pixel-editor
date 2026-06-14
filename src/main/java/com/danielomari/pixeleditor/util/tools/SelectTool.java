@@ -851,7 +851,10 @@ public class SelectTool implements Tool {
             // Create command for undo/redo
             Drawcommand command = new Drawcommand(canvas);
 
-            // Determine the paste location
+            // Determine the paste location.
+            // TODO (canvas detach): getMousePosition() and the fallback below use
+            // PANEL coordinates/size; route these through CanvasPanel.screenToImage
+            // and the image dimensions once the canvas is decoupled from the window.
             Point location = canvas.getMousePosition();
             if (location == null) {
                 // Default to canvas center if mouse position is unavailable

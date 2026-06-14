@@ -8,20 +8,12 @@ import java.awt.image.BufferedImage;
 
 public class TransformMouseEvent {
     public static MouseEvent transform(MouseEvent e, CanvasPanel canvasPanel) {
-        BufferedImage canvasImage = canvasPanel.getCanvasImage();
-        float zoomLevel = canvasPanel.getZoom();
-
-        int scaledWidth = (int) (canvasImage.getWidth() * zoomLevel);
-        int scaledHeight = (int) (canvasImage.getHeight() * zoomLevel);
-        int offsetX = (canvasPanel.getWidth() - scaledWidth) / 2;
-        int offsetY = (canvasPanel.getHeight() - scaledHeight) / 2;
-
-        int originalX = (int) ((e.getX() - offsetX) / zoomLevel);
-        int originalY = (int) ((e.getY() - offsetY) / zoomLevel);
-
-        // Ensure the coordinates are within the bounds of the canvas image
-        originalX = Math.max(0, Math.min(originalX, canvasImage.getWidth() - 1));
-        originalY = Math.max(0, Math.min(originalY, canvasImage.getHeight() - 1));
+        // Delegate to the canvas's single source of truth for the screen -> image
+        // mapping (zoom + centering offset + bounds clamp), so this conversion is
+        // never duplicated.
+        Point imagePoint = canvasPanel.screenToImage(e.getX(), e.getY());
+        int originalX = imagePoint.x;
+        int originalY = imagePoint.y;
 
         return new MouseEvent(
                 e.getComponent(),
@@ -38,6 +30,10 @@ public class TransformMouseEvent {
         );
     }
 
+    // NOTE: legacy helper used only by ShapeTool. It applies zoom but NOT the
+    // centering offset, so it sits on a different (inconsistent) coordinate path
+    // from screenToImage. Replace it with CanvasPanel.screenToImage when the
+    // canvas is decoupled from the window size.
     public static Point transformPoint(Point p) {
         double scaleFactor = CanvasPanel.getInstance().getZoom();
         return new Point(
