@@ -199,7 +199,10 @@ public class SelectTool implements Tool {
         }
         if (isMoving) {
             isMoving = false;
-            isFloatingPaste = false;
+            // NOTE: do NOT reset isFloatingPaste here. A pasted object stays a
+            // floating layer across repeated moves (so it never cuts the canvas
+            // underneath); it stops floating only when committed via
+            // clearSelection (clicking outside, switching tool, or pasting again).
 
             if (currentCommand != null && shouldAddToUndoStack || firstTime) {
                 firstTime = false;
@@ -554,6 +557,18 @@ public class SelectTool implements Tool {
 //                    }
 //                }
 //            }
+            // Paste needs only clipboard content, not an existing selection, so
+            // handle it before the "requires a selection" guard below.
+            if (e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_V
+                    && ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0
+                        || (e.getModifiersEx() & KeyEvent.META_DOWN_MASK) != 0)) {
+                if (clipboardContent != null) {
+                    pasteSelection();
+                    return true;
+                }
+                return false;
+            }
+
             if (selectionBounds == null)
                 return false;
 
@@ -577,12 +592,7 @@ public class SelectTool implements Tool {
                             return true;
                         }
                         break;
-                    case KeyEvent.VK_V:
-                        if ((e.getModifiersEx() & KeyEvent.CTRL_DOWN_MASK) != 0 || (e.getModifiersEx() & KeyEvent.META_DOWN_MASK) != 0) {
-                            pasteSelection();
-                            return true;
-                        }
-                        break;
+                    // Ctrl+V (paste) is handled above, before the selection guard.
                     case KeyEvent.VK_ESCAPE:
                         if (isSelecting) {
                             clearSelection();
@@ -855,36 +865,29 @@ public class SelectTool implements Tool {
 
     private void pasteSelection() {
         if (clipboardContent != null) {
+            // Commit whatever is currently floating so it isn't lost when the
+            // selection is replaced by the pasted content.
+            applySelectedContent();
             clearSelection();
-            // Create command for undo/redo
+            // The pasted content is a NEW floating object, not a lift of existing
+            // canvas pixels, so moving it must not erase whatever is underneath.
+            isFloatingPaste = true;
+
             Drawcommand command = new Drawcommand(canvas);
 
-            // Determine the paste location.
-            // TODO (canvas detach): getMousePosition() and the fallback below use
-            // PANEL coordinates/size; route these through CanvasPanel.screenToImage
-            // and the image dimensions once the canvas is decoupled from the window.
-            Point location = canvas.getMousePosition();
-            if (location == null) {
-                // Default to canvas center if mouse position is unavailable
-                location = new Point(
-                        (canvas.getWidth() - clipboardContent.getWidth()) / 2,
-                        (canvas.getHeight() - clipboardContent.getHeight()) / 2
-                );
-            }
+            // Paste in IMAGE coordinates, offset slightly from where it was copied
+            // so the new copy is visible, and clamped to stay on the document.
+            BufferedImage doc = canvas.getCanvasImage();
+            int baseX = (clipboardBounds != null) ? clipboardBounds.x : 0;
+            int baseY = (clipboardBounds != null) ? clipboardBounds.y : 0;
+            int px = Math.max(0, Math.min(baseX + 16, doc.getWidth() - clipboardContent.getWidth()));
+            int py = Math.max(0, Math.min(baseY + 16, doc.getHeight() - clipboardContent.getHeight()));
 
-            // Create new selection with clipboard content
             selectedContent = deepCopy(clipboardContent);
             originalContent = deepCopy(clipboardContent);
+            selectionBounds = new Rectangle(px, py,
+                    clipboardContent.getWidth(), clipboardContent.getHeight());
 
-            // Set bounds at the determined location
-            selectionBounds = new Rectangle(
-                    location.x,
-                    location.y,
-                    clipboardContent.getWidth(),
-                    clipboardContent.getHeight()
-            );
-
-            // Do not clear the area below; just set the selection bounds
             hasStoppedCreatingNew = true;
             command.storeAfterState();
             CommandManager.getInstance().executeCommand(command);
@@ -894,6 +897,8 @@ public class SelectTool implements Tool {
 
     private void pasteSelectionAt(Point location) {
         if (clipboardContent != null) {
+            // Commit any currently floating selection so it isn't lost.
+            applySelectedContent();
             clearSelection();
             isFloatingPaste = true;
 //            System.out.println("Clipboard is: " + clipboardContent);
@@ -959,5 +964,6 @@ public class SelectTool implements Tool {
         endPoint = null;
         clipped = null;
         selectedContent=null;
+        isFloatingPaste = false;
     }
 }
