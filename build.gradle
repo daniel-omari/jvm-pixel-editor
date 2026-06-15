@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'application'
+    id 'org.jetbrains.kotlin.jvm' version '2.0.21'
 }
 
 group = 'com.danielomari.pixeleditor'
@@ -20,6 +21,13 @@ java {
     }
 }
 
+// Kotlin compiles for the same JVM target; sources live in src/main/kotlin and
+// interoperate freely with the Java sources in src/main/java.
+kotlin {
+    jvmToolchain(17)
+}
+
+// --enable-preview applies only to the Java sources; Kotlin does not need it.
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += "--enable-preview"
 }
