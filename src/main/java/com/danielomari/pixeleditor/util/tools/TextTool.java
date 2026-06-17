@@ -2,30 +2,62 @@ package com.danielomari.pixeleditor.util.tools;
 
 import com.danielomari.pixeleditor.commands.CommandManager;
 import com.danielomari.pixeleditor.commands.Drawcommand;
-import com.danielomari.pixeleditor.util.tools.Tool;
 import com.danielomari.pixeleditor.ui.CanvasPanel;
-import com.danielomari.pixeleditor.util.tools.ColorTool;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
-import java.util.List;    // For generic List
-import java.util.Arrays;  // For Arrays.asList()
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
 
+/**
+ * Text tool with an MS-Paint / Photoshop style workflow:
+ *
+ *   - Click on the canvas to drop a text box that grows as you type, OR
+ *   - Drag a rectangle to get a fixed box that the text wraps inside and
+ *     stays confined to.
+ *
+ * While editing, a real {@link JTextArea} overlay sits exactly where you clicked
+ * (mapped through the canvas zoom + centring), so what you see is what you get.
+ * Enter inserts a new line; clicking away or pressing Esc commits the text -
+ * it is rasterised onto the canvas image and the overlay is removed.
+ */
 public class TextTool implements Tool {
     private static TextTool instance;
+
+    private static final int DEFAULT_BOX_W = 220; // click-mode box width (image px)
+    private static final int DRAG_THRESHOLD = 4;  // below this, a drag counts as a click
+
     private CanvasPanel canvas;
-    private JTextField textField;
-    private String textContent = "";
-    private int fontSize = 16; // Default font size
-    private Color currentColor;
-    private Drawcommand currentCommand;
+    private JTextArea editor;          // the live editing overlay (null when not editing)
+    private Rectangle boxImage;        // editing box in image coordinates
+    private boolean autoGrow;          // click mode grows in height; box mode is fixed
     private boolean isTyping = false;
-    private Point startPoint;
-    private String selectedFont = "Arial"; // Default font
+
+    private Point pressImg, curImg;    // drag anchor / current point (image coords)
+    private boolean dragging = false;
+
+    private int fontSize = 16;
+    private String selectedFont = "Arial";
+
+    // Dashed rubber-band shown while dragging out a text box.
+    private final Consumer<Graphics2D> previewListener = g -> {
+        if (!dragging || pressImg == null || curImg == null || canvas == null) return;
+        Graphics2D g2 = (Graphics2D) g.create();
+        double zoom = canvas.getZoom();
+        g2.translate(canvas.getRenderOffsetX() / zoom, canvas.getRenderOffsetY() / zoom);
+        g2.setColor(Color.GRAY);
+        g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0f, new float[]{3f}, 0f));
+        Rectangle r = rectBetween(pressImg, curImg);
+        g2.drawRect(r.x, r.y, r.width, r.height);
+        g2.dispose();
+    };
 
     public TextTool() {
-        this.currentColor = ColorTool.getColor(); // Default color from ColorTool
         this.selectedFont = "Arial";
     }
 
@@ -36,12 +68,12 @@ public class TextTool implements Tool {
         return instance;
     }
 
+    // ---- configuration ----------------------------------------------------
+
     public void setSelectedFont(String font) {
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        String[] fontArray = ge.getAvailableFontFamilyNames();
-        List<String> availableFonts = Arrays.asList(fontArray);
-        
-        if (availableFonts.contains(font)) {
+        List<String> available = Arrays.asList(ge.getAvailableFontFamilyNames());
+        if (available.contains(font)) {
             this.selectedFont = font;
         } else {
             System.err.println("Font " + font + " not found. Falling back to Arial.");
@@ -49,231 +81,252 @@ public class TextTool implements Tool {
         }
     }
 
-    public String getSelectedFont(){
-        System.out.println("In text getSelectedFont, text is " + selectedFont);
+    public String getSelectedFont() {
         return selectedFont;
+    }
+
+    public void setFontSize(int size) {
+        if (size > 0) this.fontSize = size;
     }
 
     public void setCanvas(CanvasPanel canvas) {
         this.canvas = canvas;
+        if (canvas != null) {
+            // A null layout lets the overlay sit at absolute pixel positions.
+            canvas.setLayout(null);
+            canvas.addPaintListener(previewListener); // addPaintListener de-duplicates
+        }
     }
 
-    public void setTextContent(String text) {
-        this.textContent = text;
+    /** Ask for a font size via a dialog. Used by the Text menu before placing text. */
+    public void promptForFontSize() {
+        String input = JOptionPane.showInputDialog(canvas, "Enter font size:", "Font Size", JOptionPane.PLAIN_MESSAGE);
+        if (input == null) return; // cancelled
+        try {
+            int size = Integer.parseInt(input.trim());
+            if (size > 0) {
+                fontSize = size;
+            } else {
+                JOptionPane.showMessageDialog(canvas, "Please enter a positive number.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(canvas, "Invalid number; keeping size " + fontSize + ".", "Invalid Input", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    public void setFontSize(int size) {
-        this.fontSize = size;
-    }
-
-    //develop a method to get color from colorTool
-    private Color setColor() {
-        Color color = ColorTool.getColor();
-        return color;
-    }
+    // ---- mouse handling (coordinates arrive already in image space) --------
 
     @Override
     public void onPress(MouseEvent e) {
-        if (!isTyping) { // Activate only when not typing
-            if (e.getButton() == MouseEvent.BUTTON1) { // Left click
-                handleTextInput(e.getPoint());
-            } else if (e.getButton() == MouseEvent.BUTTON3) { // Right click
-                handleFontSizeChange();
-            }
+        if (canvas == null) canvas = CanvasPanel.getInstance();
+        // Clicking anywhere while a box is open commits it first (MS Paint style).
+        if (isTyping) {
+            commit();
+            return;
         }
+        if (e.getButton() == MouseEvent.BUTTON3) { // right-click: set font size
+            promptForFontSize();
+            return;
+        }
+        if (e.getButton() != MouseEvent.BUTTON1) return;
+        pressImg = new Point(e.getX(), e.getY());
+        curImg = new Point(pressImg);
+        dragging = true;
     }
 
-    private void handleTextInput(Point position) {
-        currentCommand = new Drawcommand(CanvasPanel.getInstance());
+    @Override
+    public void onDrag(MouseEvent e) {
+        if (!dragging) return;
+        curImg = new Point(e.getX(), e.getY());
+        if (canvas != null) canvas.repaint();
+    }
+
+    @Override
+    public void onRelease(MouseEvent e) {
+        if (!dragging) return;
+        dragging = false;
+        if (pressImg == null) return;
+
+        Rectangle r = rectBetween(pressImg, curImg);
+        Rectangle box;
+        boolean grow;
+        if (r.width < DRAG_THRESHOLD && r.height < DRAG_THRESHOLD) {
+            // Plain click: a point box with a default width that grows in height.
+            box = new Rectangle(pressImg.x, pressImg.y, DEFAULT_BOX_W, fontSize + 8);
+            grow = true;
+        } else {
+            // Dragged box: text wraps and is confined to these bounds.
+            box = r;
+            grow = false;
+        }
+        if (canvas != null) canvas.repaint();
+        startEditing(box, grow);
+    }
+
+    // ---- editing overlay --------------------------------------------------
+
+    private void startEditing(Rectangle imageBox, boolean autoGrow) {
         canvas = CanvasPanel.getInstance();
-        startPoint = position;
-
-        createTextField();
-        setupTextFieldListeners();
-    }
-
-    private void createTextField() {
+        canvas.setLayout(null);
+        this.boxImage = imageBox;
+        this.autoGrow = autoGrow;
         isTyping = true;
-        textField = new JTextField(20);
-        textField.setBounds(startPoint.x, startPoint.y, 200, 30);
-        textField.setForeground(currentColor);
-        textField.setFont(new Font(selectedFont, Font.PLAIN, fontSize));
-        canvas.add(textField);
-        textField.requestFocus();
-    }
 
-    private void setupTextFieldListeners() {
-        textField.addFocusListener(new FocusAdapter() {
+        float zoom = canvas.getZoom();
+        Point screen = canvas.imageToScreen(imageBox.x, imageBox.y);
+        int sw = Math.max(20, Math.round(imageBox.width * zoom));
+        int sh = Math.max(Math.round((fontSize + 8) * zoom), Math.round(imageBox.height * zoom));
+
+        editor = new JTextArea();
+        editor.setLineWrap(true);
+        editor.setWrapStyleWord(true);
+        editor.setOpaque(false); // show the canvas through the box (WYSIWYG)
+        editor.setForeground(ColorTool.getColor());
+        editor.setCaretColor(ColorTool.getColor());
+        editor.setFont(makeFont(Math.max(1, Math.round(fontSize * zoom))));
+        editor.setBorder(BorderFactory.createDashedBorder(Color.GRAY, 1f, 3f, 2f, false));
+        editor.setBounds(screen.x, screen.y, sw, sh);
+        canvas.add(editor);
+
+        // Esc commits, and is consumed here so it doesn't also hit canvas key binds.
+        editor.getInputMap(JComponent.WHEN_FOCUSED)
+                .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "commitText");
+        editor.getActionMap().put("commitText", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                commit();
+            }
+        });
+
+        // Clicking away from the box commits it.
+        editor.addFocusListener(new FocusAdapter() {
             @Override
             public void focusLost(FocusEvent e) {
-                removeTextField();
+                commit();
             }
         });
 
-        textField.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                    removeTextField();
-                } else if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    finalizeTextInput();
-                }
-            }
-        });
-    }
-
-    private void handleFontSizeChange() {
-        String input = JOptionPane.showInputDialog(
-            canvas,
-            "Enter font size (" + fontSize + " is current):",
-            "Font Size Settings",
-            JOptionPane.PLAIN_MESSAGE
-        );
-    
-        if (input != null) {  // User didn't press Cancel
-            try {
-                int newSize = Integer.parseInt(input);
-                if (newSize > 0) {
-                    fontSize = newSize;
-                } else {
-                    JOptionPane.showMessageDialog(canvas, 
-                        "Invalid size. Keeping current: " + fontSize,
-                        "Error",
-                        JOptionPane.ERROR_MESSAGE);
-                }
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(canvas, 
-                    "Invalid number. Keeping current: " + fontSize,
-                    "Error",
-                    JOptionPane.ERROR_MESSAGE);
-            }
+        // Click mode grows the box downward to fit the text as it is typed.
+        if (autoGrow) {
+            editor.getDocument().addDocumentListener(new DocumentListener() {
+                @Override public void insertUpdate(DocumentEvent e) { fitHeight(); }
+                @Override public void removeUpdate(DocumentEvent e) { fitHeight(); }
+                @Override public void changedUpdate(DocumentEvent e) { fitHeight(); }
+            });
         }
+
+        canvas.revalidate();
+        canvas.repaint();
+        editor.requestFocusInWindow();
     }
 
-    private void finalizeTextInput() {
-        String textContent = textField.getText().trim();
-        if (!textContent.isEmpty()) {
-            drawText(startPoint.x, startPoint.y, textContent, fontSize);
-        }
-        removeTextField();
-    }
-
-    // Remove the text field properly
-    private void removeTextField() {
-        if (textField != null) {
-            canvas.remove(textField);
+    // Grow the (click-mode) editor's height so all typed lines stay visible.
+    private void fitHeight() {
+        if (editor == null) return;
+        Dimension pref = editor.getPreferredSize();
+        Rectangle b = editor.getBounds();
+        if (pref.height != b.height) {
+            editor.setBounds(b.x, b.y, b.width, pref.height);
+            canvas.revalidate();
             canvas.repaint();
-            isTyping = false;
         }
     }
 
-    // Prompt the user for font size using a dialog box
-    public void promptForFontSize() {
-        String input = JOptionPane.showInputDialog(canvas, "Enter font size:", "Font Size", JOptionPane.PLAIN_MESSAGE);
+    /** Rasterise the overlay's text onto the canvas image and remove the overlay. */
+    private void commit() {
+        if (editor == null) return;
+        JTextArea ed = editor;
+        editor = null;
+        isTyping = false;
 
-        // If user cancels the dialog, input will be null
-        if (input != null) {
-            try {
-                int size = Integer.parseInt(input);
-                if (size > 0) {
-                    fontSize = size;
-                    System.out.println("Font size set to: " + fontSize);
+        String text = ed.getText();
+        // Map the overlay's on-screen bounds back to image coordinates so the
+        // text lands exactly where the box was (undoes zoom + centring offset).
+        Rectangle b = ed.getBounds();
+        float zoom = canvas.getZoom();
+        int ix = Math.round((b.x - canvas.getRenderOffsetX()) / zoom);
+        int iy = Math.round((b.y - canvas.getRenderOffsetY()) / zoom);
+        int iw = Math.round(b.width / zoom);
+        int ih = Math.round(b.height / zoom);
 
-                    // Automatically create text box after font size is set
-                    // Calculate center position of canvas for default placement
-                    int centerX = canvas.getWidth() / 2;
-                    int centerY = canvas.getHeight() / 2;
-                    Point defaultPosition = new Point(centerX, centerY);
+        canvas.remove(ed);
+        canvas.repaint();
 
-                    // Store command for undo/redo
-                    currentCommand = new Drawcommand(canvas);
-                    startPoint = defaultPosition;
-
-                    // Create and setup text field
-                    createTextField();
-                    setupTextFieldListeners();
-
-                } else {
-                    JOptionPane.showMessageDialog(canvas, "Please enter a valid positive number for font size.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
-                }
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(canvas, "Invalid number. Font size is set to 16.", "Invalid Input", JOptionPane.ERROR_MESSAGE);
-                fontSize = 16;
-
-                // Still create text field with default size
-                int centerX = canvas.getWidth() / 2;
-                int centerY = canvas.getHeight() / 2;
-                Point defaultPosition = new Point(centerX, centerY);
-
-                currentCommand = new Drawcommand(canvas);
-                startPoint = defaultPosition;
-
-                createTextField();
-                setupTextFieldListeners();
-            }
-
+        if (text != null && !text.trim().isEmpty()) {
+            rasterize(text, new Rectangle(ix, iy, iw, ih));
         }
     }
 
-    // Draw text on the canvas at the specified position
-    private void drawText(int x, int y, String text, int fontSize) {
-        // Store the state before action
-        if (currentCommand == null) {
-            currentCommand = new Drawcommand(canvas);
-        }
+    // Draw the text onto the canvas image, wrapped and clipped to the box.
+    private void rasterize(String text, Rectangle box) {
+        // Drawcommand snapshots the before-state in its constructor.
+        Drawcommand command = new Drawcommand(canvas);
 
         Graphics2D g = canvas.getCanvasImage().createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setFont(makeFont(fontSize));
+        g.setColor(ColorTool.getColor());
 
-        // Basic settings without fancy anti-aliasing
-        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-                RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
-        g.setRenderingHint(RenderingHints.KEY_RENDERING,
-                RenderingHints.VALUE_RENDER_SPEED);
+        FontMetrics fm = g.getFontMetrics();
+        int lineH = fm.getHeight();
+        int pad = 3;
 
-        // Create the font with exact pixel size
-        Font textFont = new Font(selectedFont, Font.PLAIN, fontSize);
-        g.setFont(textFont);
-
-        // Get the color but make it slightly transparent to reduce "thickness"
-        Color textColor = setColor();
-        // Make color slightly transparent (adjust last parameter 0.9f if needed)
-        Color adjustedColor = new Color(textColor.getRed()/255f,
-                textColor.getGreen()/255f,
-                textColor.getBlue()/255f, 0.9f);
-        g.setColor(adjustedColor);
-
-        // Draw the text
-        g.drawString(text, x, y);
-        g.dispose();
-
-        // Store the state after the action
-        if (currentCommand != null) {
-            currentCommand.storeAfterState();
-            CommandManager.getInstance().executeCommand(currentCommand);
-            currentCommand = null;
-
-            //System.out.println("Last action stored");
+        // Keep the text inside the box so it stays confined to the drawn limits.
+        Shape oldClip = g.getClip();
+        g.setClip(box.x, box.y, box.width, box.height);
+        int x = box.x + pad;
+        int y = box.y + fm.getAscent() + pad;
+        int maxWidth = Math.max(1, box.width - pad * 2);
+        for (String paragraph : text.split("\n", -1)) {
+            for (String line : wrapLine(paragraph, fm, maxWidth)) {
+                g.drawString(line, x, y);
+                y += lineH;
+            }
         }
+        g.setClip(oldClip);
+        g.dispose();
+        canvas.repaint();
+
+        command.storeAfterState();
+        CommandManager.getInstance().executeCommand(command);
     }
 
+    // ---- helpers ----------------------------------------------------------
 
-    @Override
-    public void onRelease(MouseEvent e) {}
+    // Word-wrap a single paragraph to the given pixel width.
+    private List<String> wrapLine(String text, FontMetrics fm, int maxWidth) {
+        List<String> lines = new ArrayList<>();
+        if (text.isEmpty()) {
+            lines.add("");
+            return lines;
+        }
+        StringBuilder line = new StringBuilder();
+        for (String word : text.split(" ", -1)) {
+            String candidate = line.length() == 0 ? word : line + " " + word;
+            if (line.length() == 0 || fm.stringWidth(candidate) <= maxWidth) {
+                line = new StringBuilder(candidate);
+            } else {
+                lines.add(line.toString());
+                line = new StringBuilder(word);
+            }
+        }
+        lines.add(line.toString());
+        return lines;
+    }
 
-    @Override
-    public void onDrag(MouseEvent e) {}
-    
+    // Build the chosen font, falling back to a logical sans-serif if unavailable.
+    private Font makeFont(int size) {
+        Font f = new Font(selectedFont, Font.PLAIN, size);
+        if (!f.getFamily().equalsIgnoreCase(selectedFont)) {
+            f = new Font(Font.SANS_SERIF, Font.PLAIN, size);
+        }
+        return f;
+    }
+
+    // Normalised rectangle between two points.
+    private Rectangle rectBetween(Point a, Point b) {
+        int x = Math.min(a.x, b.x);
+        int y = Math.min(a.y, b.y);
+        return new Rectangle(x, y, Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+    }
 }
-
-
-/* 
- * Changes:
- * Logic: 
- * 1. Left Clicking canvas will prompt user to enter text
- * If the user press esc, the dialog will disappear
- * 
- * 2. Right Clicking canvas will prompt user to enter font size. Default font size = 16
- * If the user press esc, the dialog will disappear.
- * If the user enter invalid font size, set the font size = current font size
- * 
-*/

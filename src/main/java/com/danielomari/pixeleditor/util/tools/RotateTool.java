@@ -4,6 +4,7 @@ import com.danielomari.pixeleditor.ui.CanvasPanel;
 import com.danielomari.pixeleditor.util.tools.SelectTool;
 import com.danielomari.pixeleditor.commands.CommandManager;
 import com.danielomari.pixeleditor.commands.Drawcommand;
+import com.danielomari.pixeleditor.commands.MoveCommand;
 import com.danielomari.pixeleditor.PixelGraphicEditor;
 
 import java.awt.*;
@@ -18,7 +19,7 @@ public class RotateTool implements Tool {
     private static SelectTool selectedTool;
     private static int width,height;
     private static Rectangle clipped;
-    private static Drawcommand currentCommand;
+    private static MoveCommand currentCommand;
     //create new image with new dimension
     private static BufferedImage transformedImage;
     private static BufferedImage selectedContent;
@@ -53,8 +54,10 @@ public class RotateTool implements Tool {
     public void rotate() {
         canvasPanel = CanvasPanel.getInstance();
 
-        // Create a DrawCommand to enable undo functionality
-        currentCommand = new Drawcommand(canvasPanel);
+        // Snapshot the whole image so undo/redo restores it exactly, even when a
+        // quarter-turn changes the canvas dimensions (e.g. 800x600 -> 600x800).
+        currentCommand = new MoveCommand(canvasPanel, 0, 0);
+        currentCommand.storeBeforeState();
 
         //selectedContent = selectedTool.getselectedContent();
         BufferedImage wholeCanvas = canvasPanel.getCanvasImage();
@@ -87,10 +90,11 @@ public class RotateTool implements Tool {
         Graphics2D g2d = canvasPanel.getCanvasImage().createGraphics();
 
         if(isWholeCanvas){
-            g2d.drawImage(rotatedImage,0,0,null);
+            // Adopt the rotated image as the new canvas; its size may differ
+            // (a quarter-turn swaps width and height), so we do NOT crop it back.
             g2d.dispose();
             canvasPanel.setCanvasImage(rotatedImage);
-            
+
         }else{
             //remove select bound from select tool
             selectedTool.clearSelection();
@@ -200,26 +204,9 @@ public class RotateTool implements Tool {
         g2d.drawImage(image, centeredTransform, null);
         g2d.dispose();
 
-        // For full canvas rotation, crop or center into canvas size
-        if (isWholeCanvas) {
-            CanvasPanel canvasPanel = CanvasPanel.getInstance();
-            int canvasWidth = canvasPanel.getCanvasImage().getWidth();
-            int canvasHeight = canvasPanel.getCanvasImage().getHeight();
-
-            BufferedImage cropped = new BufferedImage(canvasWidth, canvasHeight, BufferedImage.TYPE_INT_ARGB);
-            Graphics2D gCrop = cropped.createGraphics();
-            gCrop.setColor(Color.WHITE);
-            gCrop.fillRect(0, 0, canvasWidth, canvasHeight);
-
-            int pasteX = (canvasWidth - rotated.getWidth()) / 2;
-            int pasteY = (canvasHeight - rotated.getHeight()) / 2;
-
-            gCrop.drawImage(rotated, pasteX, pasteY, null);
-            gCrop.dispose();
-
-            return cropped;
-        }
-
+        // Return the rotated image at its natural size. For a 90/270 turn the
+        // canvas therefore adopts the swapped dimensions (like MS Paint) rather
+        // than cropping the rotation back into the old size and clipping content.
         return rotated;
     }
 
