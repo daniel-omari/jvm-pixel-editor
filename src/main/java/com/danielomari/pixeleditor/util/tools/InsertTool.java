@@ -82,8 +82,10 @@ public class InsertTool implements Tool {
             insertedImage = ImageIO.read(file);
 
             if (insertedImage != null) {
-                int canvasWidth = canvasPanel.getWidth();
-                int canvasHeight = canvasPanel.getHeight();
+                // Fit to the document (the fixed page) rather than the window,
+                // since the canvas image is decoupled from the panel size.
+                int canvasWidth = canvasPanel.getCanvasImage().getWidth();
+                int canvasHeight = canvasPanel.getCanvasImage().getHeight();
                 int imgWidth = insertedImage.getWidth();
                 int imgHeight = insertedImage.getHeight();
 

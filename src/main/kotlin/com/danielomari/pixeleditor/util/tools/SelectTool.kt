@@ -373,6 +373,9 @@ class SelectTool : Tool {
         val c = canvas ?: return
         val content = floatingContent ?: return
         val bounds = selectionBounds ?: return
+        // Snapshot the canvas BEFORE committing the recolour so undo can revert it.
+        val command = MoveCommand(c, bounds.x, bounds.y)
+        command.storeBeforeState()
         val recoloured = BufferedImage(content.width, content.height, BufferedImage.TYPE_INT_ARGB)
         for (x in 0 until content.width) {
             for (y in 0 until content.height) {
@@ -385,9 +388,6 @@ class SelectTool : Tool {
         floatingContent = recoloured
         originalContent = deepCopy(recoloured)
         commitFloating()
-
-        val command = MoveCommand(c, bounds.x, bounds.y)
-        command.storeBeforeState()
         command.storeAfterState()
         CommandManager.getInstance().executeCommand(command)
     }

@@ -270,7 +270,6 @@ public class CanvasPanel extends JPanel {
         super.paintComponent(g);
 
         Graphics2D g2d = (Graphics2D) g.create();
-        g.drawImage(canvasImage, 0, 0, null);
 
         // Fill background
         g2d.setColor(Color.GRAY);

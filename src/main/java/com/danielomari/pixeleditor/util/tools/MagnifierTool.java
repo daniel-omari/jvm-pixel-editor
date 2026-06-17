@@ -12,7 +12,7 @@ import java.awt.event.MouseEvent;
 public class MagnifierTool implements Tool {
     private static final float ZOOM_INCREMENT = 0.1f;
     private static final float MAX_ZOOM = 3.0f;
-    private static final float MIN_ZOOM = 0.2f;
+    private static final float MIN_ZOOM = 0.1f; // 10% min, matches the Help docs
     private final CanvasPanel canvasPanel;
     private static float zoomLevel = 1.0f;
     private Point dragStartPoint;
@@ -23,6 +23,7 @@ public class MagnifierTool implements Tool {
 
     @Override
     public void onPress(MouseEvent e) {
+        dragStartPoint = e.getPoint(); // anchor for continuous drag-zoom
         if (e.getButton() == MouseEvent.BUTTON1) {
             zoomIn();
         } else if (e.getButton() == MouseEvent.BUTTON3) {
@@ -37,14 +38,14 @@ public class MagnifierTool implements Tool {
     // Left-drag scales the zoom in proportion to the horizontal drag distance.
     @Override
     public void onDrag(MouseEvent e) {
-        if (e.getButton() == MouseEvent.BUTTON1) {
-            if (dragStartPoint != null) {
-                int dragDistance = e.getPoint().x - dragStartPoint.x;
-                zoomLevel += dragDistance * 0.005f;
-                zoomLevel = Math.max(MIN_ZOOM, Math.min(zoomLevel, MAX_ZOOM));
-                applyZoom();
-            }
-        }
+        // getButton() reads 0 during a drag, so don't gate on it. Adjust zoom by
+        // the incremental horizontal movement since the last drag event.
+        if (dragStartPoint == null) return;
+        int dragDistance = e.getX() - dragStartPoint.x;
+        zoomLevel += dragDistance * 0.005f;
+        zoomLevel = Math.max(MIN_ZOOM, Math.min(zoomLevel, MAX_ZOOM));
+        applyZoom();
+        dragStartPoint = e.getPoint();
     }
 
     public void activate() {
@@ -69,7 +70,7 @@ public class MagnifierTool implements Tool {
     }
 
     public void setZoomLevel(float zoomLevel) {
-        this.zoomLevel = Math.max(0.1f, Math.min(zoomLevel, 3.0f)); // Keep within limits
+        this.zoomLevel = Math.max(MIN_ZOOM, Math.min(zoomLevel, MAX_ZOOM)); // Keep within limits
         canvasPanel.repaint();  // Redraw the canvas with new zoom
     }
 

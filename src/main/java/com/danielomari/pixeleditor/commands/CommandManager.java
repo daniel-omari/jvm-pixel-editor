@@ -49,6 +49,9 @@ public class CommandManager {
         if (!redoStack.isEmpty()) {
             Command command = redoStack.pop();
             command.redo();
+            // Mirror undo(): clear any stale selection and refresh the canvas.
+            SelectTool.getInstance().clearSelection();
+            CanvasPanel.getInstance().repaint();
             undoStack.push(command);
         }
     }

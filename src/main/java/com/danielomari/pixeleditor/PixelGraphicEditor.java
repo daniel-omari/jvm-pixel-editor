@@ -58,12 +58,20 @@ public class PixelGraphicEditor {
         EventQueue.invokeLater(() -> {
             mainFrame.setAlwaysOnTop(false);
 
-            // Short delay to ensure main window is fully loaded
-            Timer timer = new Timer(500, e -> {
-                MenuBars.getInstance().showHelpDocumentation();
-            });
-            timer.setRepeats(false);
-            timer.start();
+            // Show the help window only on the first ever launch, then remember it
+            // (persisted in the config file) so it does not reopen every time.
+            Configuration config = Configuration.getInstance();
+            if (!config.is("help.shown", false)) {
+                Timer timer = new Timer(500, e -> MenuBars.getInstance().showHelpDocumentation());
+                timer.setRepeats(false);
+                timer.start();
+                config.properties.setProperty("help.shown", "true");
+                try {
+                    config.getUpdatedConfiguration();
+                } catch (RuntimeException ex) {
+                    // Non-fatal: if the flag can't be saved, help simply shows again next launch.
+                }
+            }
         });
     }
 
