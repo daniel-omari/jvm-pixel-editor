@@ -210,8 +210,12 @@ public class CanvasPanel extends JPanel {
             ((MagnifierTool) previousTool).deactivate();
         }
 
-        // Reset cursor to default (can override inside tool's activation if needed)
-        setCursor(Cursor.getDefaultCursor());
+        // Reset cursor: the Text tool gets an I-beam so it's clear it is active.
+        if (tool instanceof TextTool) {
+            setCursor(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR));
+        } else {
+            setCursor(Cursor.getDefaultCursor());
+        }
 
     }
 
@@ -314,7 +318,8 @@ public class CanvasPanel extends JPanel {
     // window changes only the surrounding workspace, never the document or its
     // pixels. (This is what decouples the canvas from the window size.)
 
-    public void clearCanvas() { // Bug where this does not set the canvas to white.
+    public void clearCanvas() {
+        TextTool.forgetCommittedText(); // re-editable text no longer matches a cleared canvas
         Graphics2D g2d = canvasImage.createGraphics();
 
         g2d.setComposite(AlphaComposite.Clear);

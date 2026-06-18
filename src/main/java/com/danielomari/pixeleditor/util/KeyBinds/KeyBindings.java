@@ -51,11 +51,21 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
         }
     }
 
+    // Single-letter tool shortcuts are window-wide, so they would otherwise fire
+    // while the user is typing into a text box (e.g. an 's' would switch to the
+    // Shape tool mid-sentence). Skip them whenever a text component has focus.
+    private boolean typingInTextField() {
+        java.awt.Component f =
+                java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        return f instanceof javax.swing.text.JTextComponent;
+    }
+
     private void brushKeyBinds(InputMap inputMap, ActionMap actionMap) {
         inputMap.put(KeyStroke.getKeyStroke("B"), "switchToBrush");
         actionMap.put("switchToBrush", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore tool shortcuts while typing
                 canvasPanel.setTool(new BrushTool());
                 System.out.println("Switched to Brush Tool");  // Debugging message
             }
@@ -66,6 +76,7 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
         actionMap.put("switchToPencil", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore tool shortcuts while typing
                 canvasPanel.setTool(new PencilTool());
                 System.out.println("Switched to Pencil Tool");  // Debugging message
             }
@@ -76,6 +87,7 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
         actionMap.put("switchToEraser", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore tool shortcuts while typing
                 canvasPanel.setTool(new EraserTool());
                 System.out.println("Switched to Eraser Tool");  // Debugging message
             }
@@ -86,6 +98,7 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
         actionMap.put("switchToShape", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore tool shortcuts while typing
                 canvasPanel.setTool(new ShapeTool());
                 System.out.println("Switched to Shape Tool");  // Debugging message
             }
@@ -96,6 +109,7 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
         actionMap.put("switchToSelect", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore tool shortcuts while typing
                 canvasPanel.setTool(new SelectTool());
                 System.out.println("Switched to Select Tool");  // Debugging message
             }
@@ -106,6 +120,7 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
         actionMap.put("switchToZoom", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore tool shortcuts while typing
                 canvasPanel.setTool(new MagnifierTool(canvasPanel));
                 System.out.println("Switched to Zoom Tool");  // Debugging message
             }
@@ -116,6 +131,7 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
         actionMap.put("switchToText", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore tool shortcuts while typing
                 canvasPanel.setTool(new TextTool());
                 System.out.println("Switched to Text Tool");  // Debugging message
             }
