@@ -31,6 +31,7 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
             selectKeyBinds(inputMap, actionMap);
             zoomKeyBinds(inputMap, actionMap);
             textKeyBinds(inputMap, actionMap);
+            eyedropperKeyBinds(inputMap, actionMap);
         }
     }
 
@@ -134,6 +135,17 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
                 if (typingInTextField()) return; // ignore tool shortcuts while typing
                 canvasPanel.setTool(new TextTool());
                 System.out.println("Switched to Text Tool");  // Debugging message
+            }
+        });
+    }
+    private void eyedropperKeyBinds(InputMap inputMap, ActionMap actionMap) {
+        inputMap.put(KeyStroke.getKeyStroke("I"), "switchToEyedropper");
+        actionMap.put("switchToEyedropper", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore tool shortcuts while typing
+                canvasPanel.setTool(new EyedropperTool());
+                System.out.println("Switched to Eyedropper Tool");  // Debugging message
             }
         });
     }

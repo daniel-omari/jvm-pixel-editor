@@ -40,6 +40,13 @@ public class ColorTool implements Tool, ActionListener {
         addRecentColour(color);
         System.out.println("Color changed to: " + color);
     }
+    // Set the current colour WITHOUT recolouring an active selection (eyedropper).
+    public static void pickColor(Color color) {
+        currentColor = color;
+        addRecentColour(color);
+        System.out.println("Picked color: " + color);
+    }
+
     private static void addRecentColour(Color color) {
         if (recentColors.contains(color)) {
             recentColors.remove(color);

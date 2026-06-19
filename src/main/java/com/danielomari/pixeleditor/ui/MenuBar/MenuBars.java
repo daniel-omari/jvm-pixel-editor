@@ -109,7 +109,7 @@ public class MenuBars {
         toggleDarkMode();
     }
     public void createVerticalMenuBar() {
-        verticalBar = new JPanel(new GridLayout(11, 1));
+        verticalBar = new JPanel(new GridLayout(12, 1));
         // All Vertical Menu Items
 
         brush = new JButton("Brush");
@@ -189,6 +189,17 @@ public class MenuBars {
             colorTool.actionPerformed(e); // Open color picker
         });
         verticalBar.add(colour);
+
+        JButton eyedropper = new JButton("Eyedropper");
+        eyedropper.setToolTipText("""
+                Eyedropper
+                Click the canvas to pick up that colour as the current colour.
+                See File->Help->Eyedropper for more information.
+                """);
+        eyedropper.setFont(new Font("Comic Sans", Font.BOLD, 16));
+        eyedropper.addActionListener(e -> PixelGraphicEditor.getCanvas().setTool(new EyedropperTool()));
+        verticalBar.add(eyedropper);
+
         JButton shape = new JButton("Shape");
         shape.setToolTipText("""
                 Shape
@@ -285,7 +296,7 @@ public class MenuBars {
                 See File->Help->Icon Only Mode for more information.
                 """);
         toggleMode.setFont(new Font("Comic Sans", Font.BOLD, 16));
-        List<JButton> buttonList = List.of(brush, pencil, eraser, colour, shape, select, zoom, rotate, text);
+        List<JButton> buttonList = List.of(brush, pencil, eraser, colour, eyedropper, shape, select, zoom, rotate, text);
         toggleMode.addActionListener(new iconOnlyMode(buttonList));
         verticalBar.add(toggleMode);
 

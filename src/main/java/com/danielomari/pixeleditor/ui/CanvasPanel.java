@@ -280,6 +280,8 @@ public class CanvasPanel extends JPanel {
         // Reset cursor: the Text tool gets an I-beam so it's clear it is active.
         if (tool instanceof TextTool) {
             setCursor(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR));
+        } else if (tool instanceof EyedropperTool) {
+            setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
         } else {
             setCursor(Cursor.getDefaultCursor());
         }
