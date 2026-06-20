@@ -4,6 +4,7 @@ import com.danielomari.pixeleditor.commands.CommandManager;
 import com.danielomari.pixeleditor.ui.CanvasPanel;
 import com.danielomari.pixeleditor.util.AutomaticSave;
 import com.danielomari.pixeleditor.util.Save;
+import com.danielomari.pixeleditor.util.Project;
 import com.danielomari.pixeleditor.util.tools.InsertTool;
 import com.danielomari.pixeleditor.PixelGraphicEditor;
 
@@ -46,7 +47,7 @@ public class HorizontalButtons {
                     break;
                 case "Help":
                     item.addActionListener(e -> {
-                        //parentMenu.setVisible(false);  // Close popup menu    
+                        //parentMenu.setVisible(false);  // Close popup menu
                         Help(popupMenu);
                         });
                     break;
@@ -108,9 +109,6 @@ public class HorizontalButtons {
             }
         }
         System.out.println("Selected type: " + selectedAutoSaveType);
-//        AutomaticSave autoSave = new AutomaticSave();
-
-
     }
 
     public void getHomeButton(JButton button) {
@@ -120,7 +118,10 @@ public class HorizontalButtons {
     // File Button Logic
     private void FileButtonLogic(JButton button) {
         JPopupMenu popupMenu = new JPopupMenu();
-        String[] options = {"New", "Open", "Save", "Save As"};
+        // "Open Image"/"Save Image"/"Save Image As" act on flattened images
+        // (PNG/JPEG/BMP) for interchange with other apps; "Open Project"/"Save
+        // Project" use the native .pxe format that preserves the whole layer stack.
+        String[] options = {"New", "Open Image", "Open Project", "Save Image", "Save Image As", "Save Project"};
         for (String option : options) {
             JMenuItem item = new JMenuItem(option);
             popupMenu.add(item);
@@ -129,14 +130,20 @@ public class HorizontalButtons {
                 case "New":
                     item.addActionListener(e -> FileButtonNew());
                     break;
-                case "Open":
+                case "Open Image":
                     item.addActionListener(e -> FileButtonOpen());
                     break;
-                case "Save":
+                case "Open Project":
+                    item.addActionListener(e -> Project.openProject());
+                    break;
+                case "Save Image":
                     item.addActionListener(e -> FileButtonSave());
                     break;
-                case "Save As":
+                case "Save Image As":
                     item.addActionListener(e -> FileButtonSaveAs());
+                    break;
+                case "Save Project":
+                    item.addActionListener(e -> Project.saveProject());
                     break;
             }
         }
@@ -181,10 +188,10 @@ public class HorizontalButtons {
     private void Help(JPopupMenu parentMenu) {
         System.out.println("File Button Help");
         parentMenu.setVisible(false); // Close the popup first
-        
+
         // Get the parent frame correctly
         Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(PixelGraphicEditor.getCanvas());
-        
+
         // Create and show help dialog
         Help helpTool = new Help(parentFrame);
         helpTool.showHelp();

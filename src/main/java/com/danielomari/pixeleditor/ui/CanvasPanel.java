@@ -5,13 +5,16 @@ import com.danielomari.pixeleditor.util.KeyBinds.KeyBindings;
 import com.danielomari.pixeleditor.util.tools.*;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.awt.event.MouseWheelEvent;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import java.awt.image.BufferedImage;
+import java.awt.geom.Ellipse2D;
 import java.util.function.Consumer;
 import com.danielomari.pixeleditor.layers.Layer;
 import com.danielomari.pixeleditor.layers.LayerStack;
@@ -49,6 +52,11 @@ public class CanvasPanel extends JPanel {
         return new TexturePaint(tile, new Rectangle(0, 0, s * 2, s * 2));
     }
     private float currentZoomFactor  = 1.0f;
+    private static final float MIN_ZOOM = 0.05f, MAX_ZOOM = 32f;
+    private int panX = 0, panY = 0;            // user pan offset on top of centring
+    private boolean spaceDown = false;         // spacebar held -> drag to pan
+    private Point panStart;                    // anchor for a pan drag
+    private Point hoverScreen;                 // last cursor pos (brush-size ring)
     private RotateTool rotateTool/*  = new RotateTool()*/;
     private InsertTool insertTool/*  = new InsertTool()*/;
 
@@ -134,6 +142,7 @@ public class CanvasPanel extends JPanel {
         int oldH = layers.getHeight();
         BufferedImage[] before = snapshotLayerImages();
         layers.resize(w, h);
+        resetPan();
         BufferedImage[] after = snapshotLayerImages();
         CommandManager.getInstance().executeCommand(
                 new ResizeCanvasCommand(this, oldW, oldH, w, h, before, after));
@@ -183,12 +192,46 @@ public class CanvasPanel extends JPanel {
         BufferedImage img = getCanvasImage();
         if (vw <= 0 || vh <= 0 || img.getWidth() == 0 || img.getHeight() == 0) return;
         float fit = Math.min((float) vw / img.getWidth(), (float) vh / img.getHeight());
-        if (fit > 0) setZoom(fit);
+        if (fit > 0) { resetPan(); setZoom(fit); }
     }
 
-    // Reset to a 1:1 pixel mapping (100%).
+    // Reset to a 1:1 pixel mapping (100%), re-centred.
     public void actualSize() {
+        resetPan();
         setZoom(1.0f);
+    }
+
+    private static float clampZoom(float z) {
+        return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z));
+    }
+
+    // Zoom so that the document point currently under the screen pixel (sx, sy)
+    // stays under that same pixel afterwards (zoom-to-cursor for the mouse wheel).
+    public void zoomAtPoint(float newZoom, int sx, int sy) {
+        newZoom = clampZoom(newZoom);
+        // Image-space point under the cursor at the current zoom/offset.
+        double imgX = (sx - getRenderOffsetX()) / (double) currentZoomFactor;
+        double imgY = (sy - getRenderOffsetY()) / (double) currentZoomFactor;
+        currentZoomFactor = newZoom;
+        // Re-solve the pan so (imgX, imgY) maps back onto (sx, sy).
+        int centredX = (getWidth() - (int) (getCanvasImage().getWidth() * newZoom)) / 2;
+        int centredY = (getHeight() - (int) (getCanvasImage().getHeight() * newZoom)) / 2;
+        panX = (int) Math.round(sx - imgX * newZoom - centredX);
+        panY = (int) Math.round(sy - imgY * newZoom - centredY);
+        if (onZoomChanged != null) onZoomChanged.run();
+        repaint();
+    }
+
+    // Shift the view by a screen-pixel delta (spacebar / middle-button drag).
+    public void panBy(int dx, int dy) {
+        panX += dx;
+        panY += dy;
+        repaint();
+    }
+
+    public void resetPan() {
+        panX = 0;
+        panY = 0;
     }
 
     // --- Single source of truth for the screen <-> image coordinate mapping. ---
@@ -200,11 +243,11 @@ public class CanvasPanel extends JPanel {
 
     // Top-left position of the (scaled) image within the panel.
     public int getRenderOffsetX() {
-        return (getWidth() - (int) (getCanvasImage().getWidth() * currentZoomFactor)) / 2;
+        return (getWidth() - (int) (getCanvasImage().getWidth() * currentZoomFactor)) / 2 + panX;
     }
 
     public int getRenderOffsetY() {
-        return (getHeight() - (int) (getCanvasImage().getHeight() * currentZoomFactor)) / 2;
+        return (getHeight() - (int) (getCanvasImage().getHeight() * currentZoomFactor)) / 2 + panY;
     }
 
     // Panel (screen) pixel -> image pixel. NOT clamped to the image: tools get the
@@ -304,15 +347,31 @@ public class CanvasPanel extends JPanel {
             ((EyedropperTool) previousTool).deactivate();
         }
 
-        // Reset cursor: the Text tool gets an I-beam so it's clear it is active.
-        if (tool instanceof TextTool) {
+        applyToolCursor();
+    }
+
+    // Cursor for the active state: a move cursor while panning, an I-beam for the
+    // Text tool, and a crosshair for the pixel tools (so the brush-size ring is
+    // the visual guide rather than a clashing arrow).
+    private void applyToolCursor() {
+        if (spaceDown || panStart != null) {
+            setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+        } else if (currentTool instanceof TextTool) {
             setCursor(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR));
-        } else if (tool instanceof EyedropperTool) {
+        } else if (currentTool instanceof EyedropperTool
+                || currentTool instanceof BrushTool
+                || currentTool instanceof PencilTool
+                || currentTool instanceof EraserTool) {
             setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
         } else {
             setCursor(Cursor.getDefaultCursor());
         }
+    }
 
+    // True when the user is requesting a view pan (spacebar held, or middle drag)
+    // rather than a tool action.
+    private boolean isPanGesture(MouseEvent e) {
+        return spaceDown || SwingUtilities.isMiddleMouseButton(e);
     }
 
     // Add a paint listener to the list
@@ -333,6 +392,11 @@ public class CanvasPanel extends JPanel {
         MouseAdapter mouseAdapter = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                if (isPanGesture(e)) {              // start a view pan, not a tool action
+                    panStart = e.getPoint();
+                    applyToolCursor();
+                    return;
+                }
                 if (currentTool != null) {
                     MouseEvent transformedEvent = TransformMouseEvent.transform(e, CanvasPanel.this);
                     currentTool.onPress(transformedEvent);
@@ -342,10 +406,21 @@ public class CanvasPanel extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                if (panStart != null) {            // finish a pan
+                    panStart = null;
+                    applyToolCursor();
+                    return;
+                }
                 if (currentTool != null) {
                     MouseEvent transformedEvent = TransformMouseEvent.transform(e, CanvasPanel.this);
                     currentTool.onRelease(transformedEvent);
                 }
+                repaint();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hoverScreen = null;                 // hide the brush-size ring
                 repaint();
             }
         };
@@ -353,16 +428,59 @@ public class CanvasPanel extends JPanel {
         MouseMotionAdapter mouseMotionAdapter = new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
+                hoverScreen = e.getPoint();
+                if (panStart != null) {            // panning the view
+                    panBy(e.getX() - panStart.x, e.getY() - panStart.y);
+                    panStart = e.getPoint();
+                    return;
+                }
                 if (currentTool != null) {
                     MouseEvent transformedEvent = TransformMouseEvent.transform(e, CanvasPanel.this);
                     currentTool.onDrag(transformedEvent);
                 }
                 // Note: repaint is called by the tool's onDrag method
             }
+
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                hoverScreen = e.getPoint();
+                if (showsBrushRing()) repaint();    // update the brush-size ring
+            }
         };
+
+        // Mouse wheel zooms about the cursor (plain wheel or Ctrl+wheel).
+        addMouseWheelListener((MouseWheelEvent e) -> {
+            double factor = Math.pow(1.1, -e.getPreciseWheelRotation());
+            zoomAtPoint((float) (currentZoomFactor * factor), e.getX(), e.getY());
+        });
+
+        // Spacebar held = pan mode (released = back to the tool). Window-wide so it
+        // works without clicking the canvas first; text fields still get their
+        // spaces because a focused text component consumes the key first.
+        InputMap im = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = getActionMap();
+        im.put(KeyStroke.getKeyStroke("pressed SPACE"), "panOn");
+        im.put(KeyStroke.getKeyStroke("released SPACE"), "panOff");
+        am.put("panOn", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                if (!spaceDown) { spaceDown = true; applyToolCursor(); }
+            }
+        });
+        am.put("panOff", new AbstractAction() {
+            @Override public void actionPerformed(ActionEvent e) {
+                spaceDown = false; applyToolCursor();
+            }
+        });
 
         addMouseListener(mouseAdapter);
         addMouseMotionListener(mouseMotionAdapter);
+    }
+
+    // Whether the active tool should show the brush-size ring at the cursor.
+    private boolean showsBrushRing() {
+        return currentTool instanceof BrushTool
+                || currentTool instanceof PencilTool
+                || currentTool instanceof EraserTool;
     }
 
     @Override
@@ -425,6 +543,36 @@ public class CanvasPanel extends JPanel {
         }
 
         g2d.dispose();
+
+        // Brush-size ring drawn last, in screen space, so it sits on top of the
+        // document and shows the true footprint of the active pixel tool.
+        drawBrushRing(g);
+    }
+
+    private void drawBrushRing(Graphics g) {
+        if (!showsBrushRing() || hoverScreen == null || spaceDown || panStart != null) return;
+        int size = activeToolSize();
+        if (size <= 0) return;
+        double d = Math.max(2.0, size * currentZoomFactor); // on-screen diameter
+        double r = d / 2.0;
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        Ellipse2D ring = new Ellipse2D.Double(hoverScreen.x - r, hoverScreen.y - r, d, d);
+        // A dark + light pair so the ring is visible over any background.
+        g2.setStroke(new BasicStroke(2f));
+        g2.setColor(new Color(0, 0, 0, 140));
+        g2.draw(ring);
+        g2.setStroke(new BasicStroke(1f));
+        g2.setColor(new Color(255, 255, 255, 220));
+        g2.draw(ring);
+        g2.dispose();
+    }
+
+    private int activeToolSize() {
+        if (currentTool instanceof BrushTool) return BrushTool.getSizePx();
+        if (currentTool instanceof PencilTool) return PencilTool.getSize();
+        if (currentTool instanceof EraserTool) return EraserTool.getSize();
+        return -1;
     }
 
     @Override
@@ -441,6 +589,7 @@ public class CanvasPanel extends JPanel {
         TextTool.forgetCommittedText(); // re-editable text no longer matches a cleared canvas
         // New File: collapse back to a single blank white background layer.
         layers.reset();
+        resetPan();
         if (onLayersChanged != null) onLayersChanged.run();
         revalidate();
         repaint();

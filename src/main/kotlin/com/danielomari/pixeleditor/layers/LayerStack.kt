@@ -109,6 +109,18 @@ class LayerStack(var width: Int, var height: Int) {
         activeIndex = dest
     }
 
+    /** Replace the whole stack with the given layers (used when opening a .pxe
+     *  project). Keeps at least one layer and clamps the active index. */
+    fun loadFrom(w: Int, h: Int, newLayers: List<Layer>, newActive: Int) {
+        if (newLayers.isEmpty()) return
+        width = w
+        height = h
+        items.clear()
+        items.addAll(newLayers)
+        activeIndex = newActive.coerceIn(0, items.size - 1)
+        nextNumber = items.size + 1
+    }
+
     /** Collapse back to a single blank white background (used by New File). */
     fun reset() {
         items.clear()

@@ -8,13 +8,13 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 
-public class Help{
+public class Help {
     private final JDialog helpDialog;
     private final JTextPane instructionPane;
 
     public Help(Frame parent) {
         helpDialog = new JDialog(parent, "Help Documentation", true);
-        instructionPane = createInstructionPane(); 
+        instructionPane = createInstructionPane();
         initializeDialog();
     }
 
@@ -24,24 +24,23 @@ public class Help{
         pane.setText("<html><div style='padding:20px;text-align:center;'>"
                 + "<h1>Pixel Graphic Editor</h1>"
                 + "<h2>Help Documentation</h2>"
-                + "<p>Click on Home &rarr; Help to view this Menu</p>"
-                   + "<h2>Select a tool to view instructions</h2></div></html>");
+                + "<p>Open this any time from <b>Home &rarr; Help</b> or with <b>Ctrl + H</b>.</p>"
+                + "<h2>Pick a menu or tool on the left/top to see how it works.</h2></div></html>");
         pane.setEditable(false);
         return pane;
     }
 
     private void initializeDialog() {
         helpDialog.setLayout(new BorderLayout());
-        helpDialog.setSize(800, 600);
+        helpDialog.setSize(820, 620);
         helpDialog.setLocationRelativeTo(helpDialog.getParent());
 
-        // Add components
         helpDialog.add(createHelpHorizontalBar(), BorderLayout.NORTH);
         helpDialog.add(createHelpVerticalBar(), BorderLayout.WEST);
         helpDialog.add(new JScrollPane(instructionPane), BorderLayout.CENTER);
         helpDialog.add(createBottomPanel(), BorderLayout.SOUTH);
 
-        // ESC key support
+        // ESC closes the dialog.
         helpDialog.getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW)
             .put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "CLOSE");
         helpDialog.getRootPane().getActionMap().put("CLOSE", new AbstractAction() {
@@ -51,11 +50,10 @@ public class Help{
             }
         });
     }
-    
+
     private JPanel createHelpHorizontalBar() {
-        JPanel horizontalBar = new JPanel(new GridLayout(1, 8));
-        String[] buttons = {"Home", "File", "Insert", "Save", "Undo", "Redo", "Exit"};
-        
+        String[] buttons = {"Home", "File", "Undo", "Redo", "Exit"};
+        JPanel horizontalBar = new JPanel(new GridLayout(1, buttons.length));
         for (String label : buttons) {
             JButton btn = new JButton(label);
             btn.setFont(new Font("Comic Sans", Font.BOLD, 14));
@@ -66,10 +64,9 @@ public class Help{
     }
 
     private JPanel createHelpVerticalBar() {
-        JPanel verticalBar = new JPanel(new GridLayout(12, 1));
-        String[] tools = {"Brush", "Pencil", "Eraser", "Colour", "Shape", 
-                        "Select", "Zoom", "Rotate", "Text", "Icon Only Mode", "Dark Mode", "Keybinds"};
-        
+        String[] tools = {"Brush", "Pencil", "Eraser", "Eyedropper", "Colour", "Shape",
+                "Select", "Text", "Zoom & Pan", "Rotate", "Layers", "Keybinds"};
+        JPanel verticalBar = new JPanel(new GridLayout(tools.length, 1));
         for (String tool : tools) {
             JButton btn = new JButton(tool);
             btn.setFont(new Font("Comic Sans", Font.BOLD, 16));
@@ -82,348 +79,240 @@ public class Help{
     private JPanel createBottomPanel() {
         JButton okButton = new JButton("OK");
         okButton.addActionListener(e -> helpDialog.dispose());
-        
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         bottomPanel.add(okButton);
         return bottomPanel;
     }
 
     private void updateInstructions(String componentName) {
-        String instructions = getInstructionsForComponent(componentName);
-        instructionPane.setText(instructions);
+        instructionPane.setText(getInstructionsForComponent(componentName));
+        instructionPane.setCaretPosition(0);
     }
 
     private String getInstructionsForComponent(String componentName) {
-        // Customize these instructions according to your application's functionality
         switch (componentName) {
             case "Home":
-            return "<html><div style='padding: 10px;'>"
-                + "<h3>Home</h3>"
-                + "<p><b>Contains sub-menus:</b></p>"
-                + "<ul>"
-                + "<li>Canvas Selection</li>"
-                + "<li>Auto Save</li>"
-                + "<li>Exit</li>"
-                + "<li>Help</li>"
-                + "</ul>"
-                + "<p><b>Instructions</b></p>"
-                + "<ul>"
-                + "<li><b>Canvas Selection</b>: Adjusts canvas dimensions. (tbc)</li>"
-                + "<li><b>Auto save</b>: Saves automatically every <b>5 seconds</b> (default). Toggle using <b>Auto Save</b> button.</li>"
-                + "<li><b>Exit</b>: Exit the function without hassle. </li>"
-                + "<li><b>Help</b>: View function details by clicking button in help window</li>"
-                + "</ul></div></html>";
-    
-            case "Brush":
                 return "<html><div style='padding: 10px;'>"
-                        + "<h3>Brush</h3>"
-                        + "<p><b>Instructions</b></p>"
-                        + "<ul>"
-                        + "<li>Click the <b>Brush</b> button</li>"
-                        + "<li>Select a <b>brush type</b></li>"
-                        + "<li>Choose a <b>size</b></li>"
-                        + "<li>Use <b>left/right mouse buttons</b> to draw</li>"
-                        + "</ul>"
-                        + "<p><b>Brush Sizes</b></p>"
-                        + "<ul>"
-                        + "<li>Small</li>"
-                        + "<li>Medium (default)</li>"
-                        + "<li>Large</li>"
-                        + "</ul>"
-                        + "<p><b>Contains 5 brush types:</b></p>"
-                        + "<ul>"
-                        + "<li>Natural Pencil</li>"
-                        + "<li>Spray</li>"
-                        + "<li>Dotted Lines</li>"
-                        + "<li>Oil Brush</li>"
-                        + "<li>Star Pattern</li>"
-                        + "</ul>"
-                        + "</div></html>";
-    
-            case "Text":
+                    + "<h3>Home</h3>"
+                    + "<p><b>Sub-menus</b></p>"
+                    + "<ul>"
+                    + "<li><b>Canvas Selection</b>: set the document size by hand or from a preset (e.g. 1920 x 1080). Resizing keeps your layers, anchored top-left.</li>"
+                    + "<li><b>Auto Save</b>: toggle periodic automatic saving on/off.</li>"
+                    + "<li><b>Reset Layout</b>: restore the tool / colour / layers panels to their default sizes.</li>"
+                    + "<li><b>Exit</b>: close the editor.</li>"
+                    + "<li><b>Help</b>: open this window (also <b>Ctrl + H</b>).</li>"
+                    + "</ul></div></html>";
+
+            case "File":
                 return "<html><div style='padding: 10px;'>"
-                    + "<h3>Text</h3>"
-                    + "<p>Supports all fonts available in GraphicsEnvironment that support regular characters.</p>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ol>"
-                    + "<li>Click <b>Text</b> button</li>"
-                    + "<li><b>Left-click</b> canvas to create text field</li>"
-                    + "<li>Enter text and press <b>Enter</b></li>"
-                    + "<li><b>Right-click</b> to adjust font size</li>"
-                    + "<li>Press <b>ESC</b> to exit</li>"
-                    + "</ol></div></html>";
-    
+                    + "<h3>File</h3>"
+                    + "<p>The editor separates <b>flattened images</b> (for sharing / other apps) from <b>projects</b> (which keep your layers).</p>"
+                    + "<ul>"
+                    + "<li><b>New</b>: start a fresh blank document (Ctrl + N).</li>"
+                    + "<li><b>Open Image</b>: bring a PNG / JPEG / BMP onto the canvas (Ctrl + O).</li>"
+                    + "<li><b>Open Project</b>: open a <b>.pxe</b> project, restoring every layer.</li>"
+                    + "<li><b>Save Image</b>: export the flattened picture (Ctrl + S).</li>"
+                    + "<li><b>Save Image As</b>: export to a chosen format / location (Ctrl + Shift + S).</li>"
+                    + "<li><b>Save Project</b>: save a <b>.pxe</b> project that preserves all layers, names, opacity and visibility so you can keep editing later.</li>"
+                    + "</ul>"
+                    + "<p><b>Image formats:</b> PNG (keeps transparency), JPEG and BMP (flattened onto white).</p>"
+                    + "<p><b>Tip:</b> use <b>.pxe</b> while you work; export a PNG when you want to share it or open it in another app such as Photoshop.</p>"
+                    + "</div></html>";
+
             case "Undo":
                 return "<html><div style='padding: 10px;'>"
                     + "<h3>Undo</h3>"
-                    + "<p><b>Instructions</b></p>"
                     + "<ul>"
-                    + "<li>Click to revert last action</li>"
+                    + "<li>Reverts the last action (<b>Ctrl + Z</b>).</li>"
+                    + "<li>Covers strokes, shapes, text, fills, and layer add / delete / duplicate / merge.</li>"
                     + "</ul></div></html>";
 
             case "Redo":
                 return "<html><div style='padding: 10px;'>"
                     + "<h3>Redo</h3>"
-                    + "<p><b>Instructions</b></p>"
                     + "<ul>"
-                    + "<li>Click to redo last undone action</li>"
-                    + "</ul></div></html>";           
-
-            case "Rotate":
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>Rotate</h3>"
-                    + "<p><b>Rotation Options</b></p>"
-                    + "<ul>"
-                    + "<li>Rotate Right 90\u00B0 </li>"
-                    + "<li>Rotate Left 90\u00B0 </li>"
-                    + "<li>Rotate 180\u00B0 </li>"
-                    + "<li>Flip Vertical</li>"
-                    + "<li>Flip Horizontal</li>"
-                    + "</ul>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<p><b>Full Canvas Rotation:</b></p>"
-                    + "<ul>"
-                    + "<li>Click the <b>Rotate</b> button</li>"
-                    + "</ul>"
-                    + "<p><b>Specific Area Rotation:</b></p>"
-                    + "<ul>"
-                    + "<li>Use <b>Select tool</b> to choose area</li>"
-                    + "<li>Click <b>Rotate</b> button</li>"
-                    + "</ul>"
-                    + "<p><b>Inserted Image Rotation:</b></p>"
-                    + "<ul>"
-                    + "<li>Insert image using <b>Insert</b> button</li>"
-                    + "<li>Use <b>Select tool</b> to rotate image</li>"
-                    + "<li>Click empty space to rotate canvas instead</li>"
-                    + "</ul></div></html>";
-            case "Zoom":
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>Zoom</h3>"
-                    + "<p><b>Zoom Levels</b></p>"
-                    + "<ul>"
-                    + "<li>Maximum: 300%</li>"
-                    + "<li>Minimum: 10%</li>"
-                    + "</ul>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ul>"
-                    + "<li><b>Left-click</b> to zoom in</li>"
-                    + "<li><b>Right-click</b> to zoom out</li>"
-                    + "<li>Press <b>M</b> on the keyboard to quickly switch to the tool </li>"
-                    + "<li>Click the <b>Zoom</b> button again or press <b>M</b> again to reset magnification level</li>"
-                    + "</ul></div></html>";
-            case "Eraser":
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>Eraser</h3>"
-                    + "<p><b>Eraser Sizes</b></p>"
-                    + "<ul>"
-                    + "<li>Small</li>"
-                    + "<li>Medium</li>"
-                    + "<li>Large</li>"
-                    + "<li>Extreme</li>"
-                    + "</ul>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ul>"
-                    + "<li>Click the <b>Eraser</b> button</li>"
-                    + "<li>Use <b>left/right mouse buttons</b> to erase</li>"
-                    + "</ul></div></html>";
-            case "Colour":
-                // Add similar formatted instructions
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>Colour</h3>"
-                    + "<p><b>Colour Modes Available</b></p>"
-                    + "<ul>"
-                    + "<li>Swatches</li>"
-                    + "<li>HSV</li>"
-                    + "<li>HSL</li>"
-                    + "<li>RGB</li>"
-                    + "<li>CMYK</li>"
-                    + "</ul>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ul>"
-                    + "<li>Choose a colour from the palette</li>"
-                    + "<li>The selected colour will be applied</li>"
-                    + "<li><b>Right click</b> to fill colour</li>"
-                    + "</ul></div></html>";
-            case "Pencil":
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>Pencil</h3>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ul>"
-                    + "<li>Click the <b>Pencil</b> button</li>"
-                    + "<li>Use <b>left/right mouse buttons</b> to draw</li>"
-                    + "</ul></div></html>";
-            case "Shape":
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>Shape</h3>"
-                    + "<p><b>Provides 6 shape options:</b></p>"
-                    + "<ul>"
-                    + "<li>Rectangle</li>"
-                    + "<li>Circle</li>"
-                    + "<li>Line</li>"
-                    + "<li>Triangle</li>"
-                    + "<li>Pentagon</li>"
-                    + "<li>Hexagon</li>"
-                    + "</ul>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ul>"
-                    + "<li>Click the <b>Shape</b> button</li>"
-                    + "<li>Use <b>left/right mouse buttons</b> to draw</li>"
-                    + "</ul></div></html>";
-            case "Icon Only Mode":
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>Icon Only Mode</h3>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ul>"
-                    + "<li>Click to toggle interface mode</li>"
-                    + "</ul></div></html>";
-
-            case "Dark Mode":
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>Dark Mode</h3>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ul>"
-                    + "<li>Click to toggle between themes</li>"
-                    + "</ul></div></html>"; 
-                    
-            case "File":
-                return "<html><div style='padding: 10px;'>"
-                    + "<h3>File</h3>"
-                    + "<p><b>Options</b></p>"
-                    + "<ul>"
-                    + "<li><b>New:</b> Create new file</li>"
-                    + "<li><b>Open:</b> Select existing file</li>"
-                    + "<li><b>Save:</b> Save current file</li>"
-                    + "<li><b>Save As:</b> Save in specific format</li>"
-                    + "</ul>"
-                    + "<p><b>Supported Formats (Save As):</b></p>"
-                    + "<ul>"
-                    + "<li>JPEG</li>"
-                    + "<li>BMP</li>"
-                    + "<li>PNG</li>"
-                    + "</ul></div></html>"
-                    + "<p><b>Instructions</b></p>"
-                    + "<ul>"
-                    + "<li>Click <b>File</b> to manage documents</li>"
+                    + "<li>Re-applies the last undone action (<b>Ctrl + Y</b>).</li>"
                     + "</ul></div></html>";
 
             case "Exit":
                 return "<html><div style='padding: 10px;'>"
                     + "<h3>Exit</h3>"
-                    + "<p><b>Instructions</b></p>"
                     + "<ol>"
-                    + "<li>Click <b>Exit</b> button</li>"
-                    + "<li>Choose save option:"
-                    + "<ul>"
-                    + "<li>Yes: Save and exit</li>"
-                    + "<li>No: Exit without saving</li>"
-                    + "</ul></li>"
+                    + "<li>Click <b>Exit</b> (or press <b>Ctrl + Q</b>).</li>"
+                    + "<li>Choose whether to save before closing.</li>"
                     + "</ol></div></html>";
-            case "Insert":
-                return "<html><div style='padding: 10px;'>"
-                     + "<h3>Insert</h3>"
-                     + "<p><b>Instructions</b></p>"
-                     + "<ol>"
-                     + "<li>Click <b>Insert</b> button</li>"
-                     + "<li>Choose file from dialog</li>"
-                     + "<li>Click <b>OK</b> to confirm</li>"
-                     + "</ol></div></html>";
 
-            case "Save As":
+            case "Brush":
                 return "<html><div style='padding: 10px;'>"
-                      + "<h3>Save As</h3>"
-                      + "<p><b>Supported Formats</b></p>"
-                      + "<ul>"
-                      + "<li>JPEG</li>"
-                      + "<li>BMP</li>"
-                      + "<li>PNG</li>"
-                      + "</ul>"
-                      + "<p><b>Instructions</b></p>"
-                      + "<ol>"
-                      + "<li>Click <b>Save As</b></li>"
-                      + "<li>Select destination folder</li>"
-                      + "<li>Choose file format</li>"
-                      + "<li>Click <b>Save</b></li>"
-                      + "</ol></div></html>";
+                    + "<h3>Brush</h3>"
+                    + "<p>Click the <b>Brush</b> button (or press <b>B</b>). A settings panel opens from the button.</p>"
+                    + "<p><b>Settings</b></p>"
+                    + "<ul>"
+                    + "<li><b>Brush type</b>: Natural, Spray, Dotted, Oil, or Star.</li>"
+                    + "<li><b>Size</b>: a continuous slider up to <b>300 px</b>.</li>"
+                    + "<li><b>Opacity</b>: how strong the whole stroke is.</li>"
+                    + "</ul>"
+                    + "<p>A <b>ring at the cursor</b> previews the exact brush size. Draw with the left mouse button; the current colour comes from the Colour panel.</p>"
+                    + "</div></html>";
 
-            case "Save":
+            case "Pencil":
                 return "<html><div style='padding: 10px;'>"
-                     + "<h3>Save</h3>"
-                     + "<p><b>Instructions</b></p>"
-                     + "<ol>"
-                     + "<li>Click the <b>Save</b> button</li>"
-                     + "<li>Choose a file location</li>"
-                     + "<li>Click <b>Save</b> to confirm</li>"
-                     + "</ol></div></html>";
+                    + "<h3>Pencil</h3>"
+                    + "<p>Click the <b>Pencil</b> button (or press <b>P</b>) to open its settings panel.</p>"
+                    + "<ul>"
+                    + "<li>A <b>hard-edged</b> stroke (no soft anti-aliasing), good for crisp lines.</li>"
+                    + "<li><b>Size</b> slider up to <b>200 px</b>, plus an <b>Opacity</b> slider.</li>"
+                    + "<li>The cursor ring shows the current size.</li>"
+                    + "</ul></div></html>";
+
+            case "Eraser":
+                return "<html><div style='padding: 10px;'>"
+                    + "<h3>Eraser</h3>"
+                    + "<p>Click the <b>Eraser</b> button (or press <b>E</b>) to open its settings panel.</p>"
+                    + "<ul>"
+                    + "<li>Erases to <b>transparent</b> on the active layer, revealing the layers (or checkerboard) beneath - it does not paint white.</li>"
+                    + "<li><b>Size</b> slider up to <b>400 px</b>; the cursor ring shows the size.</li>"
+                    + "</ul></div></html>";
+
+            case "Eyedropper":
+                return "<html><div style='padding: 10px;'>"
+                    + "<h3>Eyedropper</h3>"
+                    + "<p>Click the <b>Eyedropper</b> button (or press <b>I</b>).</p>"
+                    + "<ul>"
+                    + "<li>Click anywhere to sample that pixel's colour and make it the current colour.</li>"
+                    + "<li>A <b>loupe</b> magnifier follows the cursor so you can pick precisely.</li>"
+                    + "<li>It samples the composited image (all visible layers).</li>"
+                    + "</ul></div></html>";
+
+            case "Colour":
+                return "<html><div style='padding: 10px;'>"
+                    + "<h3>Colour</h3>"
+                    + "<p>The <b>Colour panel</b> is docked at the top-right (above Layers).</p>"
+                    + "<ul>"
+                    + "<li>Pick a hue on the bar, then a shade in the <b>HSV square</b> (Photoshop-style).</li>"
+                    + "<li>The <b>current colour</b> is shown, along with a row of <b>recent colours</b>.</li>"
+                    + "<li><b>Custom...</b> opens the full system colour chooser.</li>"
+                    + "<li>The chosen colour is used by the Brush, Pencil, Shape, Text and Fill tools.</li>"
+                    + "</ul></div></html>";
+
+            case "Shape":
+                return "<html><div style='padding: 10px;'>"
+                    + "<h3>Shape</h3>"
+                    + "<p>Click the <b>Shape</b> button (or press <b>S</b>) to open its settings panel.</p>"
+                    + "<p><b>Shapes</b>: Rectangle, Circle, Line, Triangle, Pentagon, Hexagon.</p>"
+                    + "<ul>"
+                    + "<li>Choose the shape and set the <b>stroke width</b>.</li>"
+                    + "<li>Drag on the canvas to draw it in the current colour on the active layer.</li>"
+                    + "</ul></div></html>";
 
             case "Select":
                 return "<html><div style='padding: 10px;'>"
-                      + "<h3>Select</h3>"
-                      + "<p><b>Instructions</b></p>"
-                      + "<ol>"
-                      + "<li>Drag to create selection area:"
-                      + "<ul>"
-                      + "<li>Use <b>left mouse</b> or <b>right mouse</b> for selection</li>"
-                      + "</ul></li>"
-                      + "<li>Manipulate selection:"
-                      + "<ul>"
-                      + "<li><b>Left-click</b> + drag inside area to move</li>"
-                      + "<li><b>Right-click</b> for sub-functions</li>"
-                      + "</ul></li>"
-                        + "<li>Select All:"
-                        + "<ul>"
-                        + "<li>Press <b>Ctrl A</b> to select the entire canvas</li>"
-                        + "</ul></li>"
-                      + "<li>Modify selection colour:"
-                      + "<ul>"
-                      + "<li>Click <b>colour option</b> and choose colour</li>"
-                      + "<li>Pixels within selected boundaries will update automatically</li>"
-                      + "</ul></li>"
-                      + "</ol>"
-                      + "<p><b>Sub-functions</b></p>"                          + "<ul>"
-                      + "<li><b>Copy</b> - Duplicates selected content</li>"
-                      + "<li><b>Cut</b> - Removes and stores selected content</li>"
-                      + "<li><b>Paste</b> - Places stored content on canvas</li>"
-                      + "<li><b>Delete</b> - Permanently removes selection</li>"
-                      + "</ul></div></html>";
+                    + "<h3>Select</h3>"
+                    + "<p>Click the <b>Select</b> button (or press <b>C</b>).</p>"
+                    + "<ol>"
+                    + "<li>Drag to mark a rectangular area.</li>"
+                    + "<li><b>Left-click + drag</b> inside it to move the contents.</li>"
+                    + "<li><b>Right-click</b> for Copy / Cut / Paste / Delete.</li>"
+                    + "<li><b>Ctrl + A</b> selects the whole canvas; <b>Esc</b> clears the selection.</li>"
+                    + "</ol></div></html>";
+
+            case "Text":
+                return "<html><div style='padding: 10px;'>"
+                    + "<h3>Text</h3>"
+                    + "<p>Click the <b>Text</b> button (or press <b>T</b>).</p>"
+                    + "<ol>"
+                    + "<li><b>Left-click</b> the canvas to start a text box.</li>"
+                    + "<li>Type your text, then press <b>Enter</b> to commit it (each text item lands on its own layer and stays re-editable).</li>"
+                    + "<li><b>Right-click</b> the Text button for font, size and style options.</li>"
+                    + "<li>Press <b>Esc</b> to finish.</li>"
+                    + "</ol></div></html>";
+
+            case "Zoom & Pan":
+                return "<html><div style='padding: 10px;'>"
+                    + "<h3>Zoom &amp; Pan</h3>"
+                    + "<p><b>Zoom</b></p>"
+                    + "<ul>"
+                    + "<li><b>Mouse wheel</b> (or <b>Ctrl + wheel</b>) zooms in / out around the cursor - works with any tool.</li>"
+                    + "<li>The <b>Zoom</b> tool (press <b>Z</b>): left-click to zoom in, right-click to zoom out, or drag to scrub.</li>"
+                    + "<li>The <b>status bar</b> (bottom-right) shows the live zoom %, with <b>Fit</b> (fit the canvas to the window) and <b>100%</b> (actual size).</li>"
+                    + "</ul>"
+                    + "<p><b>Pan</b></p>"
+                    + "<ul>"
+                    + "<li>Hold <b>Spacebar</b> and drag, or drag with the <b>middle mouse button</b>, to move the view.</li>"
+                    + "</ul></div></html>";
+
+            case "Rotate":
+                return "<html><div style='padding: 10px;'>"
+                    + "<h3>Rotate</h3>"
+                    + "<p><b>Options</b>: Rotate 90\u00B0 right, 90\u00B0 left, 180\u00B0, Flip Vertical, Flip Horizontal.</p>"
+                    + "<p><b>Whole canvas:</b> click the <b>Rotate</b> button and choose an option.</p>"
+                    + "<p><b>A selected area:</b> mark it with the <b>Select</b> tool first, then rotate.</p>"
+                    + "</div></html>";
+
+            case "Layers":
+                return "<html><div style='padding: 10px;'>"
+                    + "<h3>Layers</h3>"
+                    + "<p>The <b>Layers panel</b> is docked at the bottom-right. The <b>active</b> layer (highlighted) is the one every tool draws on; layers are listed top-first.</p>"
+                    + "<p><b>Buttons</b></p>"
+                    + "<ul>"
+                    + "<li><b>Add</b> / <b>Del</b>: new layer / delete the active one.</li>"
+                    + "<li><b>Up</b> / <b>Dn</b>: move the active layer up or down the stack.</li>"
+                    + "<li><b>Duplicate</b>: copy the active layer.</li>"
+                    + "<li><b>Merge Down</b>: flatten the active layer into the one below it.</li>"
+                    + "</ul>"
+                    + "<p><b>Per layer</b></p>"
+                    + "<ul>"
+                    + "<li>Toggle the <b>eye</b> to show / hide it.</li>"
+                    + "<li>Drag the <b>opacity</b> slider to blend it.</li>"
+                    + "<li>Click the name of the active layer to <b>rename</b> it inline.</li>"
+                    + "<li>Drag the <b>&#8801;</b> grip to reorder.</li>"
+                    + "<li><b>Right-click</b> a layer for Duplicate / Merge Down / Rename / Delete.</li>"
+                    + "</ul>"
+                    + "<p>All layer changes are undoable with <b>Ctrl + Z</b>.</p>"
+                    + "</div></html>";
+
             case "Keybinds":
                 return "<html><div style='padding: 10px;'>"
-                     + "<h3>Keybinds</h3>"
-                     + "<p><b>General</b></p>"
-                     + "<ul>"
-                     + "<li><b>Ctrl + Z</b> - Undo</li>"
-                     + "<li><b>Ctrl + Y</b> - Redo</li>"
-                     + "<li><b>Ctrl + S</b> - Save</li>"
-                     + "<li><b>Ctrl + Shift + S</b> - Save As</li>"
-                     + "<li><b>Ctrl + N</b> - New File</li>"
-                     + "<li><b>Ctrl + O</b> - Open File</li>"
-                     + "<li><b>Ctrl + Q</b> - Exit</li>"
-                     + "<li><b>Ctrl + H</b> - Help</li>"
-                     + "</ul>"
-                     + "<p><b>Tool Shortcuts</b></p>"
-                     + "<ul>"
-                     + "<li><b>B</b> - Brush</li>"
-                     + "<li><b>P</b> - Pencil</li>"
-                     + "<li><b>E</b> - Eraser</li>"
-                     + "<li><b>C</b> - Colour</li>"
-                     + "<li><b>S</b> - Shape</li>"
-//                     + "<li><b>L</b> - Select</li>"
-                     + "<li><b>Z</b> - Zoom</li>"
-//                     + "<li><b>R</b> - Rotate</li>"
-                     + "<li><b>T</b> - Text</li>"
-//                     + "<li><b>I</b> - Icon Only Mode</li>"
-//                     + "<li><b>D</b> - Dark Mode</li>"
-                     + "</ul></div></html>";
+                    + "<h3>Keybinds</h3>"
+                    + "<p><b>General</b></p>"
+                    + "<ul>"
+                    + "<li><b>Ctrl + Z</b> - Undo</li>"
+                    + "<li><b>Ctrl + Y</b> - Redo</li>"
+                    + "<li><b>Ctrl + S</b> - Save Image</li>"
+                    + "<li><b>Ctrl + Shift + S</b> - Save Image As</li>"
+                    + "<li><b>Ctrl + N</b> - New File</li>"
+                    + "<li><b>Ctrl + O</b> - Open Image</li>"
+                    + "<li><b>Ctrl + A</b> - Select All</li>"
+                    + "<li><b>Esc</b> - Deselect</li>"
+                    + "<li><b>Ctrl + H</b> - Help</li>"
+                    + "<li><b>Ctrl + Q</b> - Exit</li>"
+                    + "</ul>"
+                    + "<p><b>Tools</b></p>"
+                    + "<ul>"
+                    + "<li><b>B</b> - Brush</li>"
+                    + "<li><b>P</b> - Pencil</li>"
+                    + "<li><b>E</b> - Eraser</li>"
+                    + "<li><b>I</b> - Eyedropper</li>"
+                    + "<li><b>S</b> - Shape</li>"
+                    + "<li><b>C</b> - Select</li>"
+                    + "<li><b>Z</b> - Zoom</li>"
+                    + "<li><b>T</b> - Text</li>"
+                    + "</ul>"
+                    + "<p><b>Navigation</b></p>"
+                    + "<ul>"
+                    + "<li><b>Mouse wheel</b> / <b>Ctrl + wheel</b> - Zoom to cursor</li>"
+                    + "<li><b>Spacebar + drag</b> or <b>middle-mouse drag</b> - Pan the view</li>"
+                    + "</ul></div></html>";
 
             default:
                 return "<html><div style='padding: 10px;'>"
-                     + "<h3>" + componentName + "</h3>"
-                     + "<p>No specific instructions available for this component.</p>"
-                     + "</div></html>";
+                    + "<h3>" + componentName + "</h3>"
+                    + "<p>No specific instructions available for this component.</p>"
+                    + "</div></html>";
         }
     }
 
     public void showHelp() {
         helpDialog.setVisible(true);
     }
-
 }
