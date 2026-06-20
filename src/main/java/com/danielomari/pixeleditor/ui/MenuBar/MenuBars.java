@@ -564,7 +564,7 @@ public class MenuBars {
         style.addActionListener(e -> BrushTool.setBrushType(types[style.getSelectedIndex()]));
         panel.add(labeledField("Style", style));
 
-        JSlider size = new JSlider(1, 60, BrushTool.getSizePx());
+        JSlider size = new JSlider(1, 300, BrushTool.getSizePx());
         size.addChangeListener(e -> BrushTool.setSizePx(size.getValue()));
         panel.add(labeledField("Size", size));
 
@@ -580,7 +580,7 @@ public class MenuBars {
         JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JSlider size = new JSlider(1, 20, PencilTool.getSize());
+        JSlider size = new JSlider(1, 200, PencilTool.getSize());
         size.addChangeListener(e -> PencilTool.setSize(size.getValue()));
         panel.add(labeledField("Size", size));
 
@@ -595,7 +595,7 @@ public class MenuBars {
     private void showEraserSettings(JButton anchor) {
         JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        JSlider size = new JSlider(1, 100, EraserTool.getSize());
+        JSlider size = new JSlider(1, 400, EraserTool.getSize());
         size.addChangeListener(e -> EraserTool.setSize(size.getValue()));
         panel.add(labeledField("Size", size));
         showToolDialog("Eraser", anchor, panel);

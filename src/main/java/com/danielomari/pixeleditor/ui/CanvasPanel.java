@@ -28,6 +28,7 @@ public class CanvasPanel extends JPanel {
     private Tool currentTool = selectTool; // Default tool is set to null initially
     private LayerStack layers; // the document is a stack of layers (index 0 = bottom)
     private Runnable onLayersChanged; // notified when the stack changes structurally (e.g. New File)
+    private Runnable onZoomChanged;   // notified when the zoom factor changes (status-bar %)
 
     // Workspace styling: a dark grey surround, a checkerboard behind the document
     // (so a transparent canvas is still visible), and a thin document outline.
@@ -165,8 +166,29 @@ public class CanvasPanel extends JPanel {
     public void setZoom(float zoomLevel) {
         if (zoomLevel > 0) {
             this.currentZoomFactor = zoomLevel;
+            if (onZoomChanged != null) onZoomChanged.run();
             repaint();
         }
+    }
+
+    // Notified whenever the zoom factor changes (drives the status-bar indicator).
+    public void setOnZoomChanged(Runnable r) {
+        this.onZoomChanged = r;
+    }
+
+    // Fit the whole document inside the current viewport (may shrink), leaving a
+    // small margin so it isn't flush against the edges.
+    public void fitToWindow() {
+        int vw = getWidth() - 16, vh = getHeight() - 16;
+        BufferedImage img = getCanvasImage();
+        if (vw <= 0 || vh <= 0 || img.getWidth() == 0 || img.getHeight() == 0) return;
+        float fit = Math.min((float) vw / img.getWidth(), (float) vh / img.getHeight());
+        if (fit > 0) setZoom(fit);
+    }
+
+    // Reset to a 1:1 pixel mapping (100%).
+    public void actualSize() {
+        setZoom(1.0f);
     }
 
     // --- Single source of truth for the screen <-> image coordinate mapping. ---

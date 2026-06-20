@@ -15,6 +15,7 @@ import java.awt.event.ComponentAdapter;
 
 public class PixelGraphicEditor {
     private final JFrame mainFrame;
+    private JLabel zoomLabel; // live zoom % in the status bar
     private static CanvasPanel canvas;
     private static JSplitPane leftSplit;   // tools | (canvas + right dock)
     private static JSplitPane rightSplit;  // canvas | right dock
@@ -72,6 +73,7 @@ public class PixelGraphicEditor {
 
         mainFrame.add(MenuBars.horizontalBar, BorderLayout.NORTH);
         mainFrame.add(leftSplit, BorderLayout.CENTER);
+        mainFrame.add(buildStatusBar(), BorderLayout.SOUTH);
 
         mainFrame.addComponentListener(new ComponentAdapter() {
             @Override
@@ -145,6 +147,34 @@ public class PixelGraphicEditor {
 
     private void createCanvas() {
         canvas = new CanvasPanel(); // the split-pane layout adds it to the frame
+    }
+
+    // Bottom status bar: a live zoom % readout plus Fit / 100% shortcuts, so the
+    // zoom level is never blind.
+    private JComponent buildStatusBar() {
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 2));
+        zoomLabel = new JLabel(zoomText());
+
+        JButton fit = new JButton("Fit");
+        fit.setFocusable(false);
+        fit.setToolTipText("Fit the whole canvas in the window");
+        fit.addActionListener(e -> canvas.fitToWindow());
+
+        JButton actual = new JButton("100%");
+        actual.setFocusable(false);
+        actual.setToolTipText("Zoom to actual size (1:1)");
+        actual.addActionListener(e -> canvas.actualSize());
+
+        bar.add(zoomLabel);
+        bar.add(fit);
+        bar.add(actual);
+
+        canvas.setOnZoomChanged(() -> zoomLabel.setText(zoomText()));
+        return bar;
+    }
+
+    private String zoomText() {
+        return "Zoom: " + Math.round(canvas.getZoom() * 100) + "%";
     }
 
     public static CanvasPanel getCanvas() {

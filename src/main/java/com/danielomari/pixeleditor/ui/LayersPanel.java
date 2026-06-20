@@ -5,11 +5,14 @@ import com.danielomari.pixeleditor.layers.LayerStack;
 import com.danielomari.pixeleditor.util.tools.SelectTool;
 import com.danielomari.pixeleditor.commands.CommandManager;
 import com.danielomari.pixeleditor.commands.DeleteLayerCommand;
+import com.danielomari.pixeleditor.commands.DuplicateLayerCommand;
+import com.danielomari.pixeleditor.commands.MergeDownCommand;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
 
 /**
  * Photoshop-style Layers dock (right side of the window).
@@ -26,6 +29,7 @@ public class LayersPanel extends JPanel {
     private final JSlider opacity = new JSlider(0, 100, 100);
     private boolean adjusting = false; // guards the opacity slider during refresh
     private boolean renaming = false;  // guards against double-committing an inline rename
+    private JButton mergeBtn;          // disabled when the active layer is the bottom one
 
     private static final Color ACTIVE_BG = new Color(70, 110, 160);
 
@@ -80,11 +84,20 @@ public class LayersPanel extends JPanel {
         opacityRow.add(opacity, BorderLayout.CENTER);
         controls.add(opacityRow, BorderLayout.NORTH);
 
-        JPanel buttons = new JPanel(new GridLayout(1, 4, 4, 0));
-        buttons.add(button("Add", "Add a new layer", e -> { stack.addLayer(); refresh(); canvas.repaint(); }));
-        buttons.add(button("Del", "Delete the active layer (Del)", e -> deleteActiveLayer()));
-        buttons.add(button("Up", "Move the active layer up", e -> { stack.moveActiveUp(); refresh(); canvas.repaint(); }));
-        buttons.add(button("Dn", "Move the active layer down", e -> { stack.moveActiveDown(); refresh(); canvas.repaint(); }));
+        JPanel row1 = new JPanel(new GridLayout(1, 4, 4, 0));
+        row1.add(button("Add", "Add a new layer", e -> { stack.addLayer(); refresh(); canvas.repaint(); }));
+        row1.add(button("Del", "Delete the active layer (Del)", e -> deleteActiveLayer()));
+        row1.add(button("Up", "Move the active layer up", e -> { stack.moveActiveUp(); refresh(); canvas.repaint(); }));
+        row1.add(button("Dn", "Move the active layer down", e -> { stack.moveActiveDown(); refresh(); canvas.repaint(); }));
+
+        JPanel row2 = new JPanel(new GridLayout(1, 2, 4, 0));
+        row2.add(button("Duplicate", "Duplicate the active layer", e -> duplicateActiveLayer()));
+        mergeBtn = button("Merge Down", "Merge the active layer into the one below it", e -> mergeDownActiveLayer());
+        row2.add(mergeBtn);
+
+        JPanel buttons = new JPanel(new GridLayout(2, 1, 0, 4));
+        buttons.add(row1);
+        buttons.add(row2);
         controls.add(buttons, BorderLayout.SOUTH);
         return controls;
     }
@@ -109,6 +122,54 @@ public class LayersPanel extends JPanel {
         canvas.repaint();
     }
 
+    // Duplicate the active layer: an exact copy sits just above it and becomes
+    // active. Undoable (Ctrl+Z removes the copy).
+    private void duplicateActiveLayer() {
+        Layer src = stack.active();
+        int srcIndex = stack.getActiveIndex();
+        Layer copy = new Layer(src.getName() + " copy", deepCopy(src.getImage()),
+                src.getVisible(), src.getOpacity());
+        int at = srcIndex + 1;
+        stack.insertAt(at, copy); // inserts and makes the copy active
+        CommandManager.getInstance().executeCommand(new DuplicateLayerCommand(canvas, copy, at));
+        refresh();
+        canvas.repaint();
+    }
+
+    // Merge the active layer down into the layer beneath it (honouring the
+    // active layer's opacity/visibility), then remove it. Undoable.
+    private void mergeDownActiveLayer() {
+        int upperIndex = stack.getActiveIndex();
+        if (upperIndex <= 0) return; // nothing below the bottom layer
+        Layer upper = stack.active();
+        Layer lower = stack.get(upperIndex - 1);
+
+        BufferedImage lowerBefore = deepCopy(lower.getImage());
+        if (upper.getVisible() && upper.getOpacity() > 0f) {
+            Graphics2D g = lower.getImage().createGraphics();
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER,
+                    Math.max(0f, Math.min(1f, upper.getOpacity()))));
+            g.drawImage(upper.getImage(), 0, 0, null);
+            g.dispose();
+        }
+        BufferedImage lowerAfter = deepCopy(lower.getImage());
+
+        stack.removeAt(upperIndex);
+        stack.setActive(upperIndex - 1);
+        CommandManager.getInstance().executeCommand(
+                new MergeDownCommand(canvas, upper, upperIndex, lower, lowerBefore, lowerAfter));
+        refresh();
+        canvas.repaint();
+    }
+
+    private static BufferedImage deepCopy(BufferedImage src) {
+        BufferedImage copy = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = copy.createGraphics();
+        g.drawImage(src, 0, 0, null);
+        g.dispose();
+        return copy;
+    }
+
     /** Rebuild the row list (top of stack first) and sync the opacity slider. */
     public void refresh() {
         listPanel.removeAll();
@@ -119,6 +180,7 @@ public class LayersPanel extends JPanel {
         adjusting = true;
         opacity.setValue(Math.round(stack.active().getOpacity() * 100));
         adjusting = false;
+        if (mergeBtn != null) mergeBtn.setEnabled(stack.getActiveIndex() > 0);
         listPanel.revalidate();
         listPanel.repaint();
     }
@@ -155,9 +217,12 @@ public class LayersPanel extends JPanel {
             public void mousePressed(MouseEvent e) {
                 LayersPanel.this.requestFocusInWindow();
                 if (SwingUtilities.isRightMouseButton(e)) {
+                    // Convert the click point before refresh() rebuilds the rows,
+                    // then anchor the popup on the panel (which stays on screen).
+                    Point p = SwingUtilities.convertPoint(name, e.getX(), e.getY(), LayersPanel.this);
                     stack.setActive(index);
                     refresh();
-                    rowMenu(layer).show(name, e.getX(), e.getY());
+                    rowMenu(layer).show(LayersPanel.this, p.x, p.y);
                 } else if (stack.getActiveIndex() == index) {
                     startInlineRename(row, name, layer);
                 } else {
@@ -172,9 +237,10 @@ public class LayersPanel extends JPanel {
             public void mousePressed(MouseEvent e) {
                 LayersPanel.this.requestFocusInWindow();
                 if (SwingUtilities.isRightMouseButton(e)) {
+                    Point p = SwingUtilities.convertPoint(row, e.getX(), e.getY(), LayersPanel.this);
                     stack.setActive(index);
                     refresh();
-                    rowMenu(layer).show(row, e.getX(), e.getY());
+                    rowMenu(layer).show(LayersPanel.this, p.x, p.y);
                 } else {
                     selectLayer(index);
                 }
@@ -274,10 +340,18 @@ public class LayersPanel extends JPanel {
 
     private JPopupMenu rowMenu(Layer layer) {
         JPopupMenu menu = new JPopupMenu();
+        JMenuItem duplicate = new JMenuItem("Duplicate Layer");
+        duplicate.addActionListener(e -> duplicateActiveLayer());
+        JMenuItem mergeDown = new JMenuItem("Merge Down");
+        mergeDown.setEnabled(stack.getActiveIndex() > 0); // nothing below the bottom layer
+        mergeDown.addActionListener(e -> mergeDownActiveLayer());
         JMenuItem rename = new JMenuItem("Rename...");
         rename.addActionListener(e -> rename(layer));
         JMenuItem delete = new JMenuItem("Delete");
         delete.addActionListener(e -> deleteActiveLayer());
+        menu.add(duplicate);
+        menu.add(mergeDown);
+        menu.addSeparator();
         menu.add(rename);
         menu.add(delete);
         return menu;
