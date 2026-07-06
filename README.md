@@ -60,7 +60,11 @@ interoperate directly in one Gradle build.
 
 ## Getting started
 
-Requires JDK 17.
+**Install:** grab the Windows installer from the
+[Releases page](https://github.com/daniel-omari/java-pixel-editor/releases) —
+no JDK needed, the runtime is bundled.
+
+**Build from source:** requires JDK 17.
 
 ```bash
 ./gradlew run     # build and launch
