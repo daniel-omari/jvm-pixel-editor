@@ -100,11 +100,13 @@ class LayerStack(var width: Int, var height: Int) {
         activeIndex = at
     }
 
-    /** Move the layer at [from] so it lands at index [to] (drag-and-drop reorder). */
+    /** Move the layer at [from] so it takes position [to] (drag-and-drop
+     *  reorder). [to] is the stack index of the row the layer was dropped on;
+     *  the dragged layer ends up at exactly that index. */
     fun moveLayer(from: Int, to: Int) {
         if (from !in items.indices || to !in items.indices || from == to) return
         val layer = items.removeAt(from)
-        val dest = (if (from < to) to - 1 else to).coerceIn(0, items.size)
+        val dest = to.coerceIn(0, items.size)
         items.add(dest, layer)
         activeIndex = dest
     }

@@ -13,6 +13,8 @@ repositories {
 
 dependencies {
     implementation group: 'com.formdev', name: 'flatlaf', version: '3.4.1'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 java {
@@ -34,6 +36,14 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.withType(JavaExec).configureEach {
     jvmArgs += "--enable-preview"
+}
+
+// Headless unit tests (no display needed): the layer engine is pure image /
+// collection logic, so it runs anywhere, including CI.
+test {
+    useJUnitPlatform()
+    systemProperty 'java.awt.headless', 'true'
+    jvmArgs '--enable-preview'
 }
 
 application {
