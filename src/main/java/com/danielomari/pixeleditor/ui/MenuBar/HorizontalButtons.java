@@ -117,6 +117,7 @@ public class HorizontalButtons {
         }
     }
 
+    // The persisted theme choice; light unless the user switched to dark.
     private static boolean isDarkTheme() {
         return "dark".equals(Configuration.getInstance().getString("ui.theme", "light"));
     }

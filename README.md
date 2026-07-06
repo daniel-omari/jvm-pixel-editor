@@ -3,11 +3,11 @@
 A desktop raster / pixel-art editor built in **Java 17 (Swing) with a Kotlin
 layer engine**. Full layer support, a rich drawing toolset with per-tool
 settings, command-pattern undo/redo, zoom-to-cursor navigation, and a native
-layered project format — all in one self-contained desktop app with light and
+layered project format, all in one self-contained desktop app with light and
 dark FlatLaf themes.
 
 <!-- TODO media: hero demo GIF here (assets/demo.gif) -->
-<!-- TODO media: 3-4 screenshots (assets/*.png) — layers panel, brush settings, HSV picker, selection -->
+<!-- TODO media: 3-4 screenshots (assets/*.png): layers panel, brush settings, HSV picker, selection -->
 
 ## Features
 
@@ -35,8 +35,8 @@ dark FlatLaf themes.
 - Marquee select, move, copy/cut/paste/delete, select-all, recolour region
 
 **Transform**
-- Rotate / flip the whole document — every layer together, adopting swapped
-  dimensions on quarter-turns — or just the current selection
+- Rotate / flip the whole document (every layer together, adopting swapped
+  dimensions on quarter-turns) or just the current selection
 
 **Navigation**
 - Mouse-wheel and Ctrl+wheel zoom-to-cursor; spacebar-drag or middle-drag panning
@@ -55,14 +55,14 @@ dark FlatLaf themes.
 ## Built with
 
 Java 17, Kotlin, Swing, FlatLaf, Gradle. The layer engine, selection tool, and
-safe-exit flow are Kotlin; the UI, tools, and command system are Java — the two
+safe-exit flow are Kotlin; the UI, tools, and command system are Java. The two
 interoperate directly in one Gradle build.
 
 ## Getting started
 
 **Install:** grab the Windows installer from the
-[Releases page](https://github.com/daniel-omari/java-pixel-editor/releases) —
-no JDK needed, the runtime is bundled.
+[Releases page](https://github.com/daniel-omari/java-pixel-editor/releases).
+No JDK needed, the runtime is bundled.
 
 **Build from source:** requires JDK 17.
 
@@ -120,4 +120,4 @@ with no extra tooling.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

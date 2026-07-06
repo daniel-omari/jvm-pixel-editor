@@ -30,6 +30,7 @@ class LayerStackTest {
 
     // ---- helpers ----
 
+    // Flood a layer's image with one colour, for compositing assertions.
     private static void fill(Layer layer, Color color) {
         Graphics2D g = layer.getImage().createGraphics();
         g.setColor(color);
@@ -37,6 +38,7 @@ class LayerStackTest {
         g.dispose();
     }
 
+    // Layer names bottom-to-top, to assert stack order concisely.
     private List<String> names() {
         return stack.layers().stream().map(Layer::getName).toList();
     }
