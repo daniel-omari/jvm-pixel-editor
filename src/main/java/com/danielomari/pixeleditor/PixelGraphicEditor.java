@@ -185,8 +185,9 @@ public class PixelGraphicEditor {
     public static void main(String[] args) {
         try {
             UIManager.put("Button.arc", 4);
+            // Theme choice persists in ~/.pixeleditor (toggle lives in the Home menu).
             FlatLaf lookAndFeel;
-            if (Configuration.getInstance().is("ui.dark.mode.disabled", true)) {
+            if ("dark".equals(Configuration.getInstance().getString("ui.theme", "light"))) {
                 lookAndFeel = new FlatMacDarkLaf();
             } else {
                 lookAndFeel = new FlatMacLightLaf();

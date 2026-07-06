@@ -9,6 +9,10 @@ import com.danielomari.pixeleditor.util.tools.InsertTool;
 import com.danielomari.pixeleditor.PixelGraphicEditor;
 
 import com.danielomari.pixeleditor.util.Help;
+import com.danielomari.pixeleditor.util.Configuration;
+import com.formdev.flatlaf.FlatLaf;
+import com.formdev.flatlaf.themes.FlatMacDarkLaf;
+import com.formdev.flatlaf.themes.FlatMacLightLaf;
 
 import javax.swing.JOptionPane;
 import javax.swing.*;
@@ -28,7 +32,7 @@ public class HorizontalButtons {
     // Home Button Logic
     private void HomeButtonLogic(JButton button) {
         JPopupMenu popupMenu = new JPopupMenu();
-        String[] options = {"Canvas Selection", "Auto Save: ", "Reset Layout", "Exit", "Help"};
+        String[] options = {"Canvas Selection", "Auto Save: ", "Theme: ", "Reset Layout", "Exit", "Help"};
         for (String option : options) {
             JMenuItem item = new JMenuItem(option);
             popupMenu.add(item);
@@ -39,6 +43,10 @@ public class HorizontalButtons {
                 case "Auto Save: ":
                     item.addActionListener(e -> HomeButtonAutoSave());
                     item.setText("Auto Save: " + selectedAutoSaveType);
+                    break;
+                case "Theme: ":
+                    item.setText("Theme: " + (isDarkTheme() ? "Dark" : "Light"));
+                    item.addActionListener(e -> toggleTheme());
                     break;
                 case "Reset Layout":
                     item.addActionListener(e -> PixelGraphicEditor.resetLayout());
@@ -106,6 +114,25 @@ public class HorizontalButtons {
                 autoSave.stopAutoSave();
                 return;
             }
+        }
+    }
+
+    private static boolean isDarkTheme() {
+        return "dark".equals(Configuration.getInstance().getString("ui.theme", "light"));
+    }
+
+    // Switch between the FlatLaf dark and light themes at runtime and persist
+    // the choice, so the editor reopens the way it was left.
+    private static void toggleTheme() {
+        boolean toLight = isDarkTheme();
+        Configuration config = Configuration.getInstance();
+        config.putString("ui.theme", toLight ? "light" : "dark");
+        config.save();
+        try {
+            UIManager.setLookAndFeel(toLight ? new FlatMacLightLaf() : new FlatMacDarkLaf());
+            FlatLaf.updateUI();
+        } catch (UnsupportedLookAndFeelException ex) {
+            // Switching failed; keep the current theme.
         }
     }
 

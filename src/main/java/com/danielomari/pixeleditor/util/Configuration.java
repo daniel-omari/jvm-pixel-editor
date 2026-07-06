@@ -57,6 +57,15 @@ public final class Configuration {
         updateConfiguration();
     }
 
+    // String settings (e.g. the selected UI theme).
+    public String getString(String key, String defaultValue) {
+        return properties.getProperty(key, defaultValue);
+    }
+
+    public void putString(String key, String value) {
+        properties.setProperty(key, value);
+    }
+
     // Integer settings (e.g. saved panel divider positions).
     public int getInt(String key, int defaultValue) {
         try {

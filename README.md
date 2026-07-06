@@ -3,8 +3,8 @@
 A desktop raster / pixel-art editor built in **Java 17 (Swing) with a Kotlin
 layer engine**. Full layer support, a rich drawing toolset with per-tool
 settings, command-pattern undo/redo, zoom-to-cursor navigation, and a native
-layered project format — all in one self-contained desktop app with a FlatLaf
-dark UI.
+layered project format — all in one self-contained desktop app with light and
+dark FlatLaf themes.
 
 <!-- TODO media: hero demo GIF here (assets/demo.gif) -->
 <!-- TODO media: 3-4 screenshots (assets/*.png) — layers panel, brush settings, HSV picker, selection -->
@@ -49,6 +49,7 @@ dark UI.
 - Custom canvas sizes with presets, autosave, safe-exit prompt
 
 **Workspace**
+- Light and dark themes (FlatLaf), toggled from the Home menu and remembered
 - Resizable, persisted panel layout with Reset Layout; in-app help for every tool
 
 ## Built with
