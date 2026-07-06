@@ -149,7 +149,7 @@ public class Help {
                     + "<p>Click the <b>Brush</b> button (or press <b>B</b>). A settings panel opens from the button.</p>"
                     + "<p><b>Settings</b></p>"
                     + "<ul>"
-                    + "<li><b>Brush type</b>: Natural, Spray, Dotted, Oil, or Star.</li>"
+                    + "<li><b>Brush type</b>: Natural, Spray, Dotted, or Oil.</li>"
                     + "<li><b>Size</b>: a continuous slider up to <b>300 px</b>.</li>"
                     + "<li><b>Opacity</b>: how strong the whole stroke is.</li>"
                     + "</ul>"

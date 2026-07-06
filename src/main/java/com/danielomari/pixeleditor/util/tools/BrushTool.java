@@ -6,26 +6,27 @@ import com.danielomari.pixeleditor.ui.CanvasPanel;
 
 import java.awt.*;
 import java.awt.event.MouseEvent;
-import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
-import java.awt.geom.GeneralPath;
 import java.awt.image.BufferedImage;
 import java.util.function.Consumer;
 
 /**
- * Brush tool: five styles (natural, spray, dotted, oil, stars), a continuous
- * size, and a stroke opacity. The whole stroke is painted to an off-screen
- * buffer at full strength and composited onto the active layer once, at the
- * chosen opacity, so overlapping segments don't darken at the joints.
+ * Brush tool: four styles (natural, spray, dotted, oil), a continuous size, and
+ * a stroke opacity. The whole stroke is painted to an off-screen buffer at full
+ * strength and composited onto the active layer once, at the chosen opacity, so
+ * overlapping segments don't darken at the joints. Stamp-based styles space their
+ * dabs by distance travelled along the whole stroke (not per segment), so the
+ * spacing stays consistent no matter how fast or slow you draw.
  */
 public class BrushTool implements Tool {
-    public enum BrushType { option1, option2, option3, option4, option5 }
+    public enum BrushType { option1, option2, option3, option4 }
 
     private static BrushType selectedBrushType = BrushType.option1;
     private static int sizePx = 10;
     private static float opacity = 1f;
 
     private int prevX = -1, prevY = -1;
+    private double leftover = 0; // distance until the next stamp (carried across segments)
     private CanvasPanel canvas;
     private BufferedImage strokeBuffer; // the in-progress stroke (full strength)
     private Graphics2D strokeG;
@@ -63,6 +64,7 @@ public class BrushTool implements Tool {
         strokeG.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         canvas.addPaintListener(previewListener);
         isDrawing = true;
+        leftover = 0; // stamp the very first dab immediately
         prevX = e.getX();
         prevY = e.getY();
         paintSegment(prevX, prevY, prevX, prevY);
@@ -116,20 +118,30 @@ public class BrushTool implements Tool {
             return;
         }
 
-        // Stamp-based styles: walk the segment at a fixed spacing so fast strokes
-        // stay continuous.
+        // Stamp-based styles: dotted wants clear gaps; spray/oil stay dense.
+        double spacing = (selectedBrushType == BrushType.option3)
+                ? Math.max(3.0, size)        // dotted
+                : Math.max(1.0, size * 0.25); // spray / oil
+        stampAlong(x1, y1, x2, y2, spacing, size);
+    }
+
+    // Place stamps every `spacing` pixels measured along the whole stroke, carrying
+    // the remainder ("leftover") between segments so the rhythm never resets.
+    private void stampAlong(int x1, int y1, int x2, int y2, double spacing, int size) {
         double dx = x2 - x1, dy = y2 - y1;
-        double distance = Math.hypot(dx, dy);
-        double spacing = switch (selectedBrushType) {
-            case option3 -> Math.max(2.0, size * 0.8); // dotted
-            case option5 -> Math.max(2.0, size * 0.9); // stars
-            default -> Math.max(1.0, size * 0.25);      // spray / oil
-        };
-        int steps = (int) Math.max(1, Math.round(distance / spacing));
-        for (int s = 0; s <= steps; s++) {
-            double t = (double) s / steps;
-            stamp(strokeG, (int) Math.round(x1 + dx * t), (int) Math.round(y1 + dy * t), size);
+        double dist = Math.hypot(dx, dy);
+        if (dist < 1e-9) { // a single click / the initial dab
+            if (leftover <= 0) { stamp(strokeG, x1, y1, size); leftover = spacing; }
+            return;
         }
+        double ux = dx / dist, uy = dy / dist;
+        double pos = 0;
+        while (leftover <= dist - pos) {
+            pos += leftover;
+            stamp(strokeG, (int) Math.round(x1 + ux * pos), (int) Math.round(y1 + uy * pos), size);
+            leftover = spacing;
+        }
+        leftover -= (dist - pos);
     }
 
     private void stamp(Graphics2D g, int px, int py, int size) {
@@ -142,8 +154,8 @@ public class BrushTool implements Tool {
                     g.fill(new Ellipse2D.Double(px + ox, py + oy, dot, dot));
                 }
             }
-            case option3 -> { // dotted: one small dot per step
-                int dot = (int) (size * 0.3);
+            case option3 -> { // dotted: one round dot per step, with clear gaps
+                double dot = Math.max(2.0, size * 0.5);
                 g.fill(new Ellipse2D.Double(px - dot / 2.0, py - dot / 2.0, dot, dot));
             }
             case option4 -> { // oil: translucent bristle cluster
@@ -157,33 +169,7 @@ public class BrushTool implements Tool {
                 }
                 g.setColor(base);
             }
-            case option5 -> { // star
-                AffineTransform original = g.getTransform();
-                try {
-                    double ox = (Math.random() - 0.5) * size * 0.3;
-                    double oy = (Math.random() - 0.5) * size * 0.3;
-                    AffineTransform at = new AffineTransform();
-                    at.translate(px + ox, py + oy);
-                    g.setTransform(at);
-                    g.fill(createStar(5, size * 0.6, size * 0.24));
-                } finally {
-                    g.setTransform(original);
-                }
-            }
             default -> { }
         }
-    }
-
-    private Shape createStar(int points, double outer, double inner) {
-        GeneralPath path = new GeneralPath();
-        double angle = Math.PI / points;
-        for (int i = 0; i < 2 * points; i++) {
-            double r = (i % 2 == 0) ? outer : inner;
-            double x = r * Math.cos(i * angle);
-            double y = r * Math.sin(i * angle);
-            if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
-        }
-        path.closePath();
-        return path;
     }
 }

@@ -408,10 +408,10 @@ public class MenuBars {
         JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        String[] styleNames = {"Natural", "Spray", "Dotted", "Oil", "Stars"};
+        String[] styleNames = {"Natural", "Spray", "Dotted", "Oil"};
         BrushTool.BrushType[] types = {
-                BrushTool.BrushType.option1, BrushTool.BrushType.option2, BrushTool.BrushType.option3,
-                BrushTool.BrushType.option4, BrushTool.BrushType.option5
+                BrushTool.BrushType.option1, BrushTool.BrushType.option2,
+                BrushTool.BrushType.option3, BrushTool.BrushType.option4
         };
         JComboBox<String> style = new JComboBox<>(styleNames);
         style.setSelectedIndex(BrushTool.getBrushType().ordinal());
