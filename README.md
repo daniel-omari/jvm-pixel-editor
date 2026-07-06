@@ -67,7 +67,19 @@ Requires JDK 17.
 ```
 
 On Windows, use `gradlew.bat` in place of `./gradlew`. The in-app help (Ctrl+H)
-documents every tool.
+documents every tool. User settings (panel layout, first-run flags) are stored
+in `~/.pixeleditor`.
+
+### Packaging
+
+```bash
+./gradlew jpackage    # native installer in build/dist
+```
+
+Uses the JDK's `jpackage`; on Windows the `.msi` type requires the
+[WiX Toolset 3.x](https://github.com/wixtoolset/wix3/releases). Change
+`--type` to `app-image` in `build.gradle` for a plain runnable folder
+with no extra tooling.
 
 ## Keyboard shortcuts
 
@@ -95,9 +107,9 @@ documents every tool.
 
 ## What I'd do next
 
-- Package a distributable build (jpackage installer) and move user settings out
-  of the source tree so a packaged JAR finds its config
-- Extend test coverage to the undo/redo command classes
+- Extend test coverage to the undo/redo command classes and the `.pxe`
+  round-trip (needs the file dialogs factored out of `Project`)
+- An application icon for the packaged build
 - Per-layer blend modes (multiply, screen, overlay)
 - Selection transforms beyond rotate (free scale, skew)
 

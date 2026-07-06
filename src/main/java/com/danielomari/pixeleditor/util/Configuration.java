@@ -3,8 +3,6 @@ package com.danielomari.pixeleditor.util;
 import java.io.*;
 import java.util.Properties;
 
-import static java.lang.System.getProperty;
-
 
 // Loads and saves persistent settings (editor.properties), e.g. panel sizes and first-run flags.
 public final class Configuration {
@@ -13,8 +11,6 @@ public final class Configuration {
 
 
     private Configuration() {
-        // try & catch is required by FileInputStream.
-        // TODO - Add logging
         try {
             File filePath = new File(getConfiguration(), "editor.properties"); // If the file is missing its created.
             if(filePath.exists() && filePath.isFile()) {
@@ -26,11 +22,15 @@ public final class Configuration {
         }
     }
 
+    // Per-user settings folder (~/.pixeleditor). Independent of the working
+    // directory, so it works the same from Gradle, a bare JAR, or a packaged
+    // install - and keeps runtime settings out of the source tree.
     private File getConfiguration() {
-        // Get the configuration folder path
-        String configDir = getProperty("user.dir") + "/src/main/java/com/danielomari/pixeleditor/config";
-        return new File(configDir);
-
+        File dir = new File(System.getProperty("user.home"), ".pixeleditor");
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        return dir;
     }
 
     private void updateConfiguration() {

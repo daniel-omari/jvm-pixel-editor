@@ -54,3 +54,30 @@ jar {
     archiveBaseName = 'pixelbasededitor'
     archiveVersion = "$project.version"
 }
+
+// Build a native installer with the JDK's jpackage tool: `gradlew jpackage`.
+// On Windows the msi type needs the WiX Toolset 3.x on the PATH; switch
+// '--type' to 'app-image' for a plain runnable folder with no extra tooling.
+tasks.register('jpackage', Exec) {
+    dependsOn jar
+    group = 'distribution'
+    description = 'Packages the app as a native installer (build/dist).'
+
+    def isWindows = System.getProperty('os.name').toLowerCase().contains('win')
+    def jpackageBin = new File(System.getProperty('java.home'),
+            isWindows ? 'bin/jpackage.exe' : 'bin/jpackage')
+    def appVersion = project.version.toString().replace('-SNAPSHOT', '')
+
+    def args = [jpackageBin.absolutePath,
+                '--name', 'Pixel Editor',
+                '--app-version', appVersion,
+                '--input', layout.buildDirectory.dir('libs').get().asFile.absolutePath,
+                '--main-jar', "pixelbasededitor-${project.version}.jar",
+                '--add-modules', 'java.se,jdk.unsupported',
+                '--java-options', '--enable-preview',
+                '--dest', layout.buildDirectory.dir('dist').get().asFile.absolutePath]
+    if (isWindows) {
+        args += ['--type', 'msi', '--win-menu', '--win-shortcut', '--win-dir-chooser']
+    }
+    commandLine args
+}
