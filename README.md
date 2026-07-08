@@ -61,7 +61,7 @@ interoperate directly in one Gradle build.
 ## Getting started
 
 **Install:** grab the Windows installer from the
-[Releases page](https://github.com/daniel-omari/java-pixel-editor/releases).
+[Releases page](https://github.com/daniel-omari/jvm-pixel-editor/releases).
 No JDK needed, the runtime is bundled.
 
 **Build from source:** requires JDK 17.
