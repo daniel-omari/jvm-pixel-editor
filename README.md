@@ -6,8 +6,9 @@ settings, command-pattern undo/redo, zoom-to-cursor navigation, and a native
 layered project format, all in one self-contained desktop app with light and
 dark FlatLaf themes.
 
-<!-- TODO media: hero demo GIF here (assets/demo.gif) -->
-<!-- TODO media: 3-4 screenshots (assets/*.png): layers panel, brush settings, HSV picker, selection -->
+![Editing a layered pixel-art scene: layer toggles, eyedropper, brush and eraser](assets/demo.gif)
+
+<!-- optional later: stills of the HSV picker and selection tool in assets/ -->
 
 ## Features
 
