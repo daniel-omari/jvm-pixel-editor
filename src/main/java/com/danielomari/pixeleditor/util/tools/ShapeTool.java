@@ -191,12 +191,16 @@ public class ShapeTool implements Tool {
     }
 
     private void drawPreviewShape(Graphics2D g) {
-        // The preview shares the renderer's zoomed Graphics, but the document's
-        // centering offset is applied separately, so apply it here too so the
-        // preview lines up with where the shape will actually be committed.
-        double zoom = canvas.getZoom();
-        g.translate(canvas.getRenderOffsetX() / zoom, canvas.getRenderOffsetY() / zoom);
-
+        // The shared Graphics is already translated to the document origin and
+        // zoomed, so image-space coordinates draw directly. The extra half-pixel
+        // translate centres stroke geometry inside pixel cells, matching exactly
+        // how the committed shape rasterises.
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        // Render the stroke geometry literally: the default STROKE_NORMALIZE
+        // silently re-rounds coordinates to pixel centres, which shifted the
+        // half-pixel-centred path a further half pixel in hard-edge mode.
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        g.translate(0.5, 0.5);
         g.setColor(setColor());
         g.setStroke(new BasicStroke(strokeWidth));
         int x = Math.min(startPoint.x, endPoint.x);
@@ -247,6 +251,13 @@ public class ShapeTool implements Tool {
         if (startPoint == null || endPoint == null) return;
 
         Graphics2D g = CanvasPanel.getInstance().getCanvasImage().createGraphics();
+        // Shapes are always anti-aliased (the Photoshop/modern-Paint convention;
+        // the Pencil is the hard-edged tool). Half-pixel centring plus
+        // STROKE_PURE makes the committed raster land exactly where the
+        // preview showed it.
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        g.translate(0.5, 0.5);
         g.setColor(setColor());
         g.setStroke(new BasicStroke(strokeWidth));
         int x = Math.min(startPoint.x, endPoint.x);
