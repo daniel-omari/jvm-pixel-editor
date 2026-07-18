@@ -302,6 +302,7 @@ public class Help {
                     + "<p><b>Navigation</b></p>"
                     + "<ul>"
                     + "<li><b>Mouse wheel</b> / <b>Ctrl + wheel</b> - Zoom to cursor</li>"
+                    + "<li><b>G</b> - Toggle the pixel grid (shown from 800% zoom)</li>"
                     + "<li><b>Spacebar + drag</b> or <b>middle-mouse drag</b> - Pan the view</li>"
                     + "</ul></div></html>";
 

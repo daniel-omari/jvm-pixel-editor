@@ -41,6 +41,7 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
             InputMap inputMap = canvasPanel.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
             ActionMap actionMap = canvasPanel.getActionMap();
             selectAllKeyBind(inputMap, actionMap);
+            gridKeyBind(inputMap, actionMap);
             escKeyBind(inputMap, actionMap);
             createHelp(inputMap, actionMap);
             undoKeyBind(inputMap, actionMap);
@@ -152,6 +153,17 @@ public class KeyBindings { // Moved the creation and configuration of keybinds a
                 canvasPanel.setTool(new SelectTool());
                 selectTool.selectAll(canvasPanel);
                 canvasPanel.repaint();
+            }
+        });
+    }
+
+    private void gridKeyBind(InputMap inputMap, ActionMap actionMap) {
+        inputMap.put(KeyStroke.getKeyStroke("G"), "toggleGrid");
+        actionMap.put("toggleGrid", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (typingInTextField()) return; // ignore shortcuts while typing
+                canvasPanel.toggleGrid();
             }
         });
     }

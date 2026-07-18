@@ -217,10 +217,8 @@ class SelectTool : Tool {
         val c = canvas ?: return
         val bounds = selectionBounds ?: return
         val saved: AffineTransform = g.transform
-        val zoom = c.zoom.toDouble()
-        // The shared Graphics is zoomed but not offset; apply the document's
-        // centring offset so the overlay lines up with the canvas.
-        g.translate(c.renderOffsetX / zoom, c.renderOffsetY / zoom)
+        // The shared Graphics is already translated to the document origin and
+        // zoomed, so image-space coordinates draw directly.
         try {
             if (drag == Drag.SELECTING) {
                 g.color = Color.BLACK

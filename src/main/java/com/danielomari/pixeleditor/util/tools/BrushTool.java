@@ -36,12 +36,11 @@ public class BrushTool implements Tool {
     // Live preview: draw the buffer over the canvas at the chosen opacity.
     private final Consumer<Graphics2D> previewListener = g -> {
         if (strokeBuffer == null || canvas == null) return;
+        // The shared Graphics is already translated to the document origin and
+        // zoomed, so the buffer draws at (0, 0).
         Graphics2D g2 = (Graphics2D) g.create();
-        double zoom = canvas.getZoom();
         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, clampOpacity()));
-        g2.drawImage(strokeBuffer,
-                (int) (canvas.getRenderOffsetX() / zoom),
-                (int) (canvas.getRenderOffsetY() / zoom), null);
+        g2.drawImage(strokeBuffer, 0, 0, null);
         g2.dispose();
     };
 

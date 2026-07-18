@@ -32,7 +32,7 @@ public class HorizontalButtons {
     // Home Button Logic
     private void HomeButtonLogic(JButton button) {
         JPopupMenu popupMenu = new JPopupMenu();
-        String[] options = {"Canvas Selection", "Auto Save: ", "Theme: ", "Reset Layout", "Exit", "Help"};
+        String[] options = {"Canvas Selection", "Auto Save: ", "Theme: ", "Pixel Grid: ", "Reset Layout", "Exit", "Help"};
         for (String option : options) {
             JMenuItem item = new JMenuItem(option);
             popupMenu.add(item);
@@ -47,6 +47,12 @@ public class HorizontalButtons {
                 case "Theme: ":
                     item.setText("Theme: " + (isDarkTheme() ? "Dark" : "Light"));
                     item.addActionListener(e -> toggleTheme());
+                    break;
+                case "Pixel Grid: ":
+                    // Shown from 8x zoom; the G key toggles it too.
+                    item.setText("Pixel Grid: "
+                            + (CanvasPanel.getInstance().isGridEnabled() ? "On" : "Off"));
+                    item.addActionListener(e -> CanvasPanel.getInstance().toggleGrid());
                     break;
                 case "Reset Layout":
                     item.addActionListener(e -> PixelGraphicEditor.resetLayout());

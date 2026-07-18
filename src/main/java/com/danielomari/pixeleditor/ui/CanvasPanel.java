@@ -437,6 +437,28 @@ public class CanvasPanel extends JPanel {
         addMouseMotionListener(mouseMotionAdapter);
     }
 
+    // ---- pixel grid overlay ----
+    // Visible from 8x zoom, where one image pixel spans >= 8 screen pixels.
+    private static final float GRID_MIN_ZOOM = 8f;
+    private boolean gridEnabled =
+            com.danielomari.pixeleditor.util.Configuration.getInstance().is("ui.grid", true);
+
+    public boolean isGridEnabled() {
+        return gridEnabled;
+    }
+
+    public void setGridEnabled(boolean enabled) {
+        gridEnabled = enabled;
+        com.danielomari.pixeleditor.util.Configuration.getInstance()
+                .putString("ui.grid", String.valueOf(enabled));
+        com.danielomari.pixeleditor.util.Configuration.getInstance().save();
+        repaint();
+    }
+
+    public void toggleGrid() {
+        setGridEnabled(!gridEnabled);
+    }
+
     // Whether the active tool should show the brush-size ring at the cursor.
     private boolean showsBrushRing() {
         return currentTool instanceof BrushTool
@@ -470,14 +492,16 @@ public class CanvasPanel extends JPanel {
             g2d.setColor(DOC_BORDER);
             g2d.drawRect(offsetX, offsetY, dw - 1, dh - 1);
 
-            int ox = (int) (offsetX / currentZoomFactor);
-            int oy = (int) (offsetY / currentZoomFactor);
-
-            // Apply zoom transformation
+            // One exact transform for all document-space drawing: translate to
+            // the document origin, then zoom. The old code truncated the offset
+            // to whole image pixels ((int)(offset / zoom)), which could shift
+            // the rendered document up to a full cell away from where
+            // screenToImage places the cursor at high zoom.
+            g2d.translate(offsetX, offsetY);
             g2d.scale(currentZoomFactor, currentZoomFactor);
 
-            // Composite the layers bottom-to-top at the document's centring offset,
-            // honouring each layer's visibility and opacity.
+            // Composite the layers bottom-to-top, honouring each layer's
+            // visibility and opacity.
             for (Layer layer : layers.layers()) {
                 if (!layer.getVisible()) continue;
                 Composite previous = g2d.getComposite();
@@ -485,7 +509,7 @@ public class CanvasPanel extends JPanel {
                     g2d.setComposite(AlphaComposite.getInstance(
                             AlphaComposite.SRC_OVER, Math.max(0f, Math.min(1f, layer.getOpacity()))));
                 }
-                g2d.drawImage(layer.getImage(), ox, oy, this);
+                g2d.drawImage(layer.getImage(), 0, 0, this);
                 g2d.setComposite(previous);
             }
 
@@ -505,9 +529,48 @@ public class CanvasPanel extends JPanel {
 
         g2d.dispose();
 
-        // Brush-size ring drawn last, in screen space, so it sits on top of the
-        // document and shows the true footprint of the active pixel tool.
+        // Pixel grid over the document at high zoom, then the brush-size ring,
+        // both in screen space so they sit on top of everything.
+        drawPixelGrid(g);
         drawBrushRing(g);
+    }
+
+    // One thin line per image-pixel boundary, only for the rows/columns that
+    // are actually inside the viewport. Aligned to the same (ox * zoom)
+    // convention the layer renderer uses, so lines sit exactly on the edges of
+    // the rendered pixels.
+    private void drawPixelGrid(Graphics g) {
+        if (!gridEnabled || currentZoomFactor < GRID_MIN_ZOOM || layers == null) return;
+
+        int docW = getCanvasImage().getWidth();
+        int docH = getCanvasImage().getHeight();
+        int offsetX = getRenderOffsetX();
+        int offsetY = getRenderOffsetY();
+
+        // Boundary col/row range actually inside the viewport (0 is the
+        // document's left/top edge, docW/docH its right/bottom).
+        int firstCol = Math.max(0, (int) Math.floor((0 - offsetX) / (double) currentZoomFactor));
+        int lastCol = Math.min(docW, (int) Math.ceil((getWidth() - offsetX) / (double) currentZoomFactor));
+        int firstRow = Math.max(0, (int) Math.floor((0 - offsetY) / (double) currentZoomFactor));
+        int lastRow = Math.min(docH, (int) Math.ceil((getHeight() - offsetY) / (double) currentZoomFactor));
+        if (firstCol > lastCol || firstRow > lastRow) return;
+
+        int top = offsetY + Math.round(firstRow * currentZoomFactor);
+        int bottom = offsetY + Math.round(lastRow * currentZoomFactor);
+        int left = offsetX + Math.round(firstCol * currentZoomFactor);
+        int right = offsetX + Math.round(lastCol * currentZoomFactor);
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setColor(new Color(128, 128, 128, 80));
+        for (int col = firstCol; col <= lastCol; col++) {
+            int x = offsetX + Math.round(col * currentZoomFactor);
+            g2.drawLine(x, top, x, bottom);
+        }
+        for (int row = firstRow; row <= lastRow; row++) {
+            int y = offsetY + Math.round(row * currentZoomFactor);
+            g2.drawLine(left, y, right, y);
+        }
+        g2.dispose();
     }
 
     private void drawBrushRing(Graphics g) {

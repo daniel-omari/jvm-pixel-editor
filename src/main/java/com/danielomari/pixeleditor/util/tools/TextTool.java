@@ -74,9 +74,9 @@ public class TextTool implements Tool {
     // Dashed rubber-band shown while dragging out a text box.
     private final Consumer<Graphics2D> previewListener = g -> {
         if (!dragging || pressImg == null || curImg == null || canvas == null) return;
+        // The shared Graphics is already translated to the document origin and
+        // zoomed, so image-space coordinates draw directly.
         Graphics2D g2 = (Graphics2D) g.create();
-        double zoom = canvas.getZoom();
-        g2.translate(canvas.getRenderOffsetX() / zoom, canvas.getRenderOffsetY() / zoom);
         g2.setColor(Color.GRAY);
         g2.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0f, new float[]{3f}, 0f));
         Rectangle r = rectBetween(pressImg, curImg);
