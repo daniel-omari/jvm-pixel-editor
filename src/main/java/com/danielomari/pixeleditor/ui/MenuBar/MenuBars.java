@@ -23,6 +23,7 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.Objects;
+import java.util.function.IntConsumer;
 import java.util.List;
 import java.awt.GraphicsEnvironment;
 import java.util.Arrays;
@@ -403,6 +404,54 @@ public class MenuBars {
         return row;
     }
 
+    // ---- size controls ----------------------------------------------------
+    // A linear slider wastes almost all of its travel on large sizes (1-10 px
+    // would share ~3% of a 1-300 track). These map the slider LOGARITHMICALLY,
+    // so half the travel covers the small sizes where precision matters, and a
+    // spinner alongside gives exact pixel input.
+
+    private static final int SIZE_SLIDER_STEPS = 1000;
+
+    private static int sliderToSize(int pos, int maxSize) {
+        double t = pos / (double) SIZE_SLIDER_STEPS;
+        return (int) Math.max(1, Math.round(Math.pow(maxSize, t)));
+    }
+
+    private static int sizeToSlider(int size, int maxSize) {
+        int clamped = Math.max(1, Math.min(size, maxSize));
+        return (int) Math.round(SIZE_SLIDER_STEPS * (Math.log(clamped) / Math.log(maxSize)));
+    }
+
+    // Log-mapped slider + exact-value spinner, kept in sync both ways.
+    private JPanel sizeRow(int maxSize, int current, IntConsumer onChange) {
+        JSlider slider = new JSlider(0, SIZE_SLIDER_STEPS, sizeToSlider(current, maxSize));
+        JSpinner spinner = new JSpinner(new SpinnerNumberModel(current, 1, maxSize, 1));
+        boolean[] syncing = {false}; // guards against the two controls re-triggering each other
+
+        slider.addChangeListener(e -> {
+            if (syncing[0]) return;
+            int size = sliderToSize(slider.getValue(), maxSize);
+            syncing[0] = true;
+            spinner.setValue(size);
+            syncing[0] = false;
+            onChange.accept(size);
+        });
+        spinner.addChangeListener(e -> {
+            if (syncing[0]) return;
+            int size = (Integer) spinner.getValue();
+            syncing[0] = true;
+            slider.setValue(sizeToSlider(size, maxSize));
+            syncing[0] = false;
+            onChange.accept(size);
+        });
+
+        spinner.setPreferredSize(new Dimension(64, spinner.getPreferredSize().height));
+        JPanel row = new JPanel(new BorderLayout(6, 0));
+        row.add(slider, BorderLayout.CENTER);
+        row.add(spinner, BorderLayout.EAST);
+        return row;
+    }
+
     // Brush settings: style + size + opacity, in one floating panel.
     private void showBrushSettings(JButton anchor) {
         JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
@@ -418,9 +467,7 @@ public class MenuBars {
         style.addActionListener(e -> BrushTool.setBrushType(types[style.getSelectedIndex()]));
         panel.add(labeledField("Style", style));
 
-        JSlider size = new JSlider(1, 300, BrushTool.getSizePx());
-        size.addChangeListener(e -> BrushTool.setSizePx(size.getValue()));
-        panel.add(labeledField("Size", size));
+        panel.add(labeledField("Size", sizeRow(300, BrushTool.getSizePx(), BrushTool::setSizePx)));
 
         JSlider opacity = new JSlider(0, 100, Math.round(BrushTool.getOpacity() * 100));
         opacity.addChangeListener(e -> BrushTool.setOpacity(opacity.getValue() / 100f));
@@ -434,9 +481,7 @@ public class MenuBars {
         JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JSlider size = new JSlider(1, 200, PencilTool.getSize());
-        size.addChangeListener(e -> PencilTool.setSize(size.getValue()));
-        panel.add(labeledField("Size", size));
+        panel.add(labeledField("Size", sizeRow(200, PencilTool.getSize(), PencilTool::setSize)));
 
         JSlider opacity = new JSlider(0, 100, Math.round(PencilTool.getOpacity() * 100));
         opacity.addChangeListener(e -> PencilTool.setOpacity(opacity.getValue() / 100f));
@@ -449,9 +494,7 @@ public class MenuBars {
     private void showEraserSettings(JButton anchor) {
         JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        JSlider size = new JSlider(1, 400, EraserTool.getSize());
-        size.addChangeListener(e -> EraserTool.setSize(size.getValue()));
-        panel.add(labeledField("Size", size));
+        panel.add(labeledField("Size", sizeRow(400, EraserTool.getSize(), EraserTool::setSize)));
         showToolDialog("Eraser", anchor, panel);
     }
 
